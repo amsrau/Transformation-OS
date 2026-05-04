@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Transformation OS — Field Brief · Implement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+</head>
+<body style="margin:0;padding:0;background:#F4F4F4">
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect}=React;
+
+/* ═══════════════════════════════════
+   GOOGLE SHEETS BACKEND
+═══════════════════════════════════ */
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbzb3c9-AMO8PZjxAq4lfShNs_4SGawNf3zDkPObK_P64JMqx2G5qCNEBPyZtwL4rNSfgw/exec';
+
+async function saveResponse(data){
+  try{
+    const payload={
+      timestamp: new Date().toISOString(),
+      respondent: data.identity ? data.identity.name||'Anonymous' : 'Anonymous',
+      role:       data.identity ? data.identity.role||'' : '',
+      anonymous:  String(!data.identity),
+      belief:     data.belief||'',
+      fit_strategic:  String(data.agrees?.strategicFit||''),
+      fit_replicable: String(data.agrees?.replicability||''),
+      fit_jc:         String(data.agrees?.jcTransformation||''),
+      layer_clarity:    JSON.stringify(data.layerClarity||{}),
+      layer_importance: JSON.stringify(data.layerImportance||{}),
+      duel_r1: data.bracketWinners?.r1||'',
+      duel_r2: data.bracketWinners?.r2||'',
+      duel_r3: data.bracketWinners?.r3||'',
+      must_have: data.mustHave||'',
+      blocker:   data.blocker||'',
+    };
+    const NEW_URL='https://script.google.com/macros/s/AKfycbzVoiH-INw8i24l1Rxjhh-SPRPq-xeKRze3GBUmKB5fFFNJ_cMq1W4-QVWN0Nhm-Cn6Mg/exec';
+    const params=new URLSearchParams(payload).toString();
+    // GET request — works from file:// with zero CORS issues
+    await fetch(`${NEW_URL}?${params}`,{method:'GET',mode:'no-cors'});
+    return true;
+  }catch(e){
+    console.error('Sheets error:',e);
+    return false;
+  }
+}
+
+// Results dashboard reads from a local session cache
+// (Google Sheets does not support public GET without auth)
+// Responses submitted in this browser session are shown live.
+const SESSION_CACHE_KEY='tos_session_responses';
+
+function cacheResponse(data){
+  try{
+    const existing=JSON.parse(sessionStorage.getItem(SESSION_CACHE_KEY)||'[]');
+    existing.push({...data,timestamp:new Date().toISOString()});
+    sessionStorage.setItem(SESSION_CACHE_KEY,JSON.stringify(existing));
+  }catch(e){}
+}
+
+async function loadResponses(){
+  try{
+    return JSON.parse(sessionStorage.getItem(SESSION_CACHE_KEY)||'[]');
+  }catch(e){return [];}
+}
+
+/* ═══════════════════════════════════
+   STYLES
+═══════════════════════════════════ */
+const CSS=`
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --charcoal:#2E3338;--dark:#1A1C1F;--mid:#6B6F78;
+  --light:#E8E8E8;--pale:#F4F4F4;--white:#FFFFFF;--ink:#1A1A1A;
+  --ok:#3A6B4A;--risk:#8C3A3A;--warn:#7A5C20;--info:#3A6080;
+  --f-serif:'EB Garamond',Georgia,serif;
+  --f-mono:'DM Mono',monospace;
+  --f-sans:'Inter',system-ui,sans-serif;
+}
+body{background:var(--pale);color:var(--ink);font-family:var(--f-sans)}
+.wrap{max-width:780px;margin:0 auto;padding:32px 20px 80px}
+
+/* NAV */
+.top-nav{background:var(--charcoal);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+.top-nav-logo{font-family:var(--f-serif);font-size:16px;color:rgba(255,255,255,.9);letter-spacing:.5px}
+.top-nav-right{display:flex;gap:8px}
+.nav-btn{padding:5px 12px;font-family:var(--f-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;border-radius:2px;cursor:pointer;transition:all .15s;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.6)}
+.nav-btn:hover{color:white;border-color:rgba(255,255,255,.5)}
+.nav-btn.active{background:rgba(255,255,255,.1);color:white;border-color:rgba(255,255,255,.4)}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--light);border-radius:3px;margin-bottom:16px;overflow:hidden}
+.card-hdr{padding:14px 20px;border-bottom:1px solid var(--light);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-family:var(--f-sans);font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--charcoal)}
+.card-body{padding:20px}
+
+/* HERO */
+.hero{background:var(--charcoal);padding:36px 32px;margin-bottom:20px;border-radius:3px;position:relative;overflow:hidden}
+.hero::after{content:'Transformation OS';position:absolute;bottom:-30px;right:-10px;font-family:var(--f-serif);font-size:110px;color:rgba(255,255,255,.04);pointer-events:none;white-space:nowrap;line-height:1}
+.hero-label{font-family:var(--f-mono);font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:10px}
+.hero-title{font-family:var(--f-serif);font-size:28px;font-weight:500;color:white;line-height:1.3;margin-bottom:12px}
+.hero-sub{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;max-width:560px;margin-bottom:20px}
+.hero-tagline{font-family:var(--f-serif);font-size:16px;font-style:italic;color:rgba(255,255,255,.85);padding:14px 16px;background:rgba(255,255,255,.07);border-left:3px solid rgba(255,255,255,.3);line-height:1.5}
+
+/* SECTION LABELS */
+.section-num{font-family:var(--f-mono);font-size:9px;color:var(--mid);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+.section-title{font-family:var(--f-serif);font-size:20px;font-weight:500;color:var(--charcoal);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--light)}
+
+/* LAYER GRID */
+.layer-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--light)}
+.layer-row:last-child{border-bottom:none}
+.layer-num-badge{font-family:var(--f-mono);font-size:10px;color:var(--mid);width:24px;flex-shrink:0;padding-top:2px}
+.layer-bar{width:3px;background:var(--charcoal);flex-shrink:0;align-self:stretch;min-height:32px}
+.layer-name{font-family:var(--f-serif);font-size:14px;font-weight:500;color:var(--charcoal);margin-bottom:2px}
+.layer-desc{font-size:11px;color:var(--mid);line-height:1.5}
+
+/* FEATURE CARDS */
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.feature-card{padding:14px;border:1px solid var(--light);border-radius:2px;background:var(--pale)}
+.feature-num{font-family:var(--f-mono);font-size:8px;color:var(--mid);letter-spacing:1px;margin-bottom:4px}
+.feature-name{font-family:var(--f-serif);font-size:14px;font-weight:500;color:var(--charcoal);margin-bottom:4px}
+.feature-desc{font-size:11px;color:var(--mid);line-height:1.5}
+
+/* PROTOTYPE LINK */
+.proto-box{padding:20px;background:var(--pale);border:1px solid var(--light);border-radius:2px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.proto-text{flex:1}
+.proto-title{font-family:var(--f-serif);font-size:16px;font-weight:500;color:var(--charcoal);margin-bottom:4px}
+.proto-sub{font-size:12px;color:var(--mid);line-height:1.5}
+.proto-btn{padding:10px 20px;background:var(--charcoal);color:white;border:none;border-radius:2px;font-family:var(--f-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+.proto-btn:hover{background:var(--dark)}
+
+/* INSTRUMENTS */
+.instrument{margin-bottom:28px}
+.inst-label{font-family:var(--f-sans);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--charcoal);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.inst-num{font-family:var(--f-mono);font-size:9px;color:var(--mid);letter-spacing:1px}
+.inst-question{font-family:var(--f-serif);font-size:16px;color:var(--charcoal);margin-bottom:14px;line-height:1.5}
+.inst-hint{font-size:11px;color:var(--mid);margin-bottom:12px;font-style:italic}
+
+/* BELIEF CHECK */
+.belief-input{width:100%;padding:10px 14px;border:1px solid var(--light);border-radius:2px;font-family:var(--f-serif);font-size:14px;color:var(--ink);outline:none;background:var(--white);line-height:1.5}
+.belief-input:focus{border-color:var(--charcoal)}
+.belief-prefix{font-family:var(--f-serif);font-size:15px;color:var(--mid);margin-bottom:6px;font-style:italic}
+
+/* AGREE/DISAGREE */
+.agree-row{margin-bottom:14px;padding:12px 14px;border:1px solid var(--light);border-radius:2px;background:var(--pale)}
+.agree-statement{font-size:13px;color:var(--charcoal);margin-bottom:10px;line-height:1.5}
+.agree-scale{display:flex;gap:6px;align-items:center}
+.agree-label-l{font-family:var(--f-mono);font-size:8px;color:var(--mid);letter-spacing:1px;white-space:nowrap}
+.agree-label-r{font-family:var(--f-mono);font-size:8px;color:var(--mid);letter-spacing:1px;white-space:nowrap}
+.agree-opts{display:flex;gap:5px;flex:1;justify-content:center}
+.agree-opt{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--light);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:11px;color:var(--mid);transition:all .15s;background:var(--white)}
+.agree-opt:hover{border-color:var(--charcoal);color:var(--charcoal)}
+.agree-opt.selected{background:var(--charcoal);border-color:var(--charcoal);color:white}
+
+/* LAYER HEAT MAP */
+.heatmap-row{display:grid;grid-template-columns:1fr 160px 160px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--light)}
+.heatmap-row:last-child{border-bottom:none}
+.heatmap-row-hdr{display:grid;grid-template-columns:1fr 160px 160px;gap:10px;padding:6px 0 8px;border-bottom:2px solid var(--charcoal)}
+.heatmap-name{font-family:var(--f-serif);font-size:13px;color:var(--charcoal)}
+.heatmap-num{font-family:var(--f-mono);font-size:9px;color:var(--mid);margin-right:6px}
+.rating-btns{display:flex;gap:4px}
+.rating-btn{width:44px;height:28px;border-radius:2px;border:1px solid var(--light);cursor:pointer;font-family:var(--f-mono);font-size:9px;color:var(--mid);transition:all .15s;background:var(--white)}
+.rating-btn:hover{border-color:var(--charcoal);color:var(--charcoal)}
+.rating-btn.sel-1{background:#EEF5F0;border-color:#9DC4AA;color:var(--ok)}
+.rating-btn.sel-2{background:#FBF7EE;border-color:#D4C080;color:var(--warn)}
+.rating-btn.sel-3{background:#F0F0F0;border-color:#B0B0B0;color:var(--mid)}
+
+/* BRACKET */
+.bracket-wrap{display:flex;flex-direction:column;gap:14px}
+.bracket-round{border:1px solid var(--light);border-radius:2px;overflow:hidden}
+.bracket-hdr{padding:8px 14px;background:var(--pale);border-bottom:1px solid var(--light);font-family:var(--f-mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);display:flex;justify-content:space-between}
+.bracket-match{display:grid;grid-template-columns:1fr 40px 1fr;gap:0;min-height:60px}
+.bracket-option{padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;justify-content:center}
+.bracket-option:hover{background:var(--pale)}
+.bracket-option.chosen{background:#EEF1F5;border-bottom:2px solid var(--charcoal)}
+.bracket-option.eliminated{opacity:.4}
+.bracket-vs{display:flex;align-items:center;justify-content:center;background:var(--pale);border-left:1px solid var(--light);border-right:1px solid var(--light);font-family:var(--f-mono);font-size:9px;color:var(--mid)}
+.bracket-feat-name{font-family:var(--f-serif);font-size:13px;font-weight:500;color:var(--charcoal);margin-bottom:2px}
+.bracket-feat-sub{font-size:10px;color:var(--mid);line-height:1.4}
+.bracket-winner{padding:12px 16px;background:#EEF1F5;border-top:1px solid var(--light);display:flex;align-items:center;gap:10px}
+.bracket-winner-label{font-family:var(--f-mono);font-size:8px;color:var(--mid);letter-spacing:1px;text-transform:uppercase}
+.bracket-winner-name{font-family:var(--f-serif);font-size:14px;font-weight:500;color:var(--charcoal)}
+
+/* ONE SIGNAL */
+.signal-textarea{width:100%;padding:12px 14px;border:1px solid var(--light);border-radius:2px;font-family:var(--f-sans);font-size:13px;color:var(--ink);outline:none;resize:vertical;min-height:72px;line-height:1.6}
+.signal-textarea:focus{border-color:var(--charcoal)}
+.signal-label{font-size:12px;font-weight:500;color:var(--charcoal);margin-bottom:6px}
+.signal-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* IDENTITY TOGGLE */
+.identity-box{padding:16px 20px;border:1px solid var(--light);border-radius:2px;background:var(--pale);margin-bottom:20px}
+.identity-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.identity-label{font-size:13px;color:var(--charcoal)}
+.identity-sub{font-size:11px;color:var(--mid);margin-top:2px}
+.toggle{width:44px;height:24px;border-radius:12px;position:relative;cursor:pointer;transition:background .2s;border:1.5px solid;flex-shrink:0}
+.toggle-thumb{position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:white;transition:left .2s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.identity-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.identity-input{padding:8px 12px;border:1px solid var(--light);border-radius:2px;font-family:var(--f-sans);font-size:13px;color:var(--ink);outline:none;width:100%;background:var(--white)}
+.identity-input:focus{border-color:var(--charcoal)}
+
+/* SUBMIT */
+.submit-btn{width:100%;padding:14px;background:var(--charcoal);color:white;border:none;border-radius:2px;font-family:var(--f-mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .15s;margin-top:8px}
+.submit-btn:hover{background:var(--dark)}
+.submit-btn:disabled{background:var(--light);color:var(--mid);cursor:not-allowed}
+.progress-bar{height:3px;background:var(--light);border-radius:2px;overflow:hidden;margin-bottom:20px}
+.progress-fill{height:100%;background:var(--charcoal);border-radius:2px;transition:width .4s ease}
+
+/* THANK YOU */
+.thankyou{text-align:center;padding:60px 20px}
+.ty-icon{font-size:40px;margin-bottom:16px}
+.ty-title{font-family:var(--f-serif);font-size:28px;font-weight:500;color:var(--charcoal);margin-bottom:8px}
+.ty-sub{font-size:14px;color:var(--mid);line-height:1.6;max-width:400px;margin:0 auto}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+.dash-stat{background:var(--white);border:1px solid var(--light);border-radius:2px;padding:16px;text-align:center}
+.dash-val{font-family:var(--f-serif);font-size:36px;font-weight:400;color:var(--charcoal);line-height:1}
+.dash-label{font-family:var(--f-mono);font-size:8px;color:var(--mid);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+.response-card{background:var(--white);border:1px solid var(--light);border-radius:2px;padding:16px;margin-bottom:10px}
+.rc-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--light)}
+.rc-who{font-family:var(--f-mono);font-size:9px;color:var(--mid);letter-spacing:1px}
+.rc-time{font-family:var(--f-mono);font-size:9px;color:var(--mid)}
+.rc-section{margin-bottom:10px}
+.rc-section-title{font-family:var(--f-mono);font-size:8px;letter-spacing:2px;color:var(--mid);text-transform:uppercase;margin-bottom:4px}
+.rc-answer{font-size:13px;color:var(--charcoal);line-height:1.5;background:var(--pale);padding:8px 10px;border-radius:2px;border-left:2px solid var(--charcoal)}
+.bar-chart{margin-bottom:16px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.bar-name{font-size:12px;color:var(--charcoal);width:180px;flex-shrink:0}
+.bar-track{flex:1;height:16px;background:var(--pale);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;background:var(--charcoal);border-radius:2px;transition:width .6s ease}
+.bar-count{font-family:var(--f-mono);font-size:10px;color:var(--mid);width:30px;text-align:right;flex-shrink:0}
+.agree-summary{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px}
+.agree-sum-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--pale);border-radius:2px}
+.agree-sum-label{font-size:12px;color:var(--charcoal);flex:1}
+.agree-sum-score{font-family:var(--f-serif);font-size:18px;font-weight:400;color:var(--charcoal);min-width:32px;text-align:right}
+.agree-sum-bar{width:80px;height:6px;background:var(--light);border-radius:3px;overflow:hidden}
+.agree-sum-fill{height:100%;border-radius:3px;background:var(--charcoal)}
+.empty-state{text-align:center;padding:40px;color:var(--mid);font-size:14px;font-style:italic}
+`;
+
+/* ═══════════════════════════════════
+   DATA
+═══════════════════════════════════ */
+const LAYERS=[
+  {num:'00',name:'Implement DNA',desc:'The constitution. Governs everything.'},
+  {num:'01',name:'The Heritage Engine',desc:'29 years of intelligence, actively working.'},
+  {num:'02',name:'The Thinking Layer',desc:'Every discipline the problem demands.'},
+  {num:'03',name:'The Human Layer',desc:'One platform, every perspective.'},
+  {num:'04',name:'Where Talent Compounds',desc:'Platform sharpens consultants. Consultants enrich platform.'},
+  {num:'05',name:'The Standard of Proof',desc:'Every recommendation pre-challenged.'},
+];
+
+const FEATURES=[
+  {num:'F1',name:'The Heritage Engine',desc:'29 years of engagement data matching your current context in real time.'},
+  {num:'F2',name:'Stakeholder Simulation',desc:'AI agents simulating every stakeholder before you enter the room.'},
+  {num:'F3',name:'Where Talent Compounds',desc:'JC debates AI hypotheses, earns neurons, builds career intelligence.'},
+  {num:'F4',name:'The Standard of Proof',desc:'Every recommendation red-teamed by a second model before you see it.'},
+  {num:'F5',name:'The Human Layer',desc:'Every persona sees exactly what they need — and nothing they should not.'},
+];
+
+const STATEMENTS=[
+  'This product reflects how Implement already thinks about its competitive advantage.',
+  'A well-funded competitor could replicate this within 2 years.',
+  'This changes what it means to be a Junior Consultant at Implement.',
+];
+
+const BRACKET_ROUNDS=[
+  {round:'Round 1',a:{id:'F1',name:'The Heritage Engine',sub:'29 years of data, working'},b:{id:'F2',name:'Stakeholder Simulation',sub:'Simulate every stakeholder'}},
+  {round:'Round 2',a:{id:'F3',name:'Where Talent Compounds',sub:'Career intelligence flywheel'},b:{id:'F4',name:'The Standard of Proof',sub:'Pre-challenged recommendations'}},
+  {round:'Round 3',label:'Final',a:null,b:{id:'F5',name:'The Human Layer',sub:'Every perspective, one platform'}},
+];
+
+/* ═══════════════════════════════════
+   COMPONENTS
+═══════════════════════════════════ */
+function Toggle({on,onChange}){
+  return(
+    <div className="toggle" onClick={onChange}
+      style={{background:on?'var(--charcoal)':'var(--light)',borderColor:on?'var(--charcoal)':'var(--light)'}}>
+      <div className="toggle-thumb" style={{left:on?'calc(100% - 18px)':'2px'}}/>
+    </div>
+  );
+}
+
+function AgreeScale({value,onChange}){
+  return(
+    <div className="agree-scale">
+      <div className="agree-label-l">Strongly disagree</div>
+      <div className="agree-opts">
+        {[1,2,3,4,5].map(n=>(
+          <div key={n} className={`agree-opt${value===n?' selected':''}`} onClick={()=>onChange(n)}>{n}</div>
+        ))}
+      </div>
+      <div className="agree-label-r">Strongly agree</div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════
+   PARTICIPANT VIEW
+═══════════════════════════════════ */
+function ParticipantView(){
+  const [step,setStep]=useState('brief'); // brief | instruments | done
+  const [identity,setIdentity]=useState(false);
+  const [name,setName]=useState('');
+  const [role,setRole]=useState('');
+
+  // Instrument state
+  const [belief,setBelief]=useState('');
+  const [agrees,setAgrees]=useState({0:null,1:null,2:null});
+  const [layerClarity,setLayerClarity]=useState({});
+  const [layerImportance,setLayerImportance]=useState({});
+  const [bracketWinners,setBracketWinners]=useState({0:null,1:null,2:null});
+  const [mustHave,setMustHave]=useState('');
+  const [blocker,setBlocker]=useState('');
+  const [submitting,setSubmitting]=useState(false);
+  const [submitError,setSubmitError]=useState(false);
+
+  // Bracket logic
+  const getR3A=()=>{
+    const w0=bracketWinners[0];
+    if(!w0) return {id:'?',name:'Winner of Round 1',sub:'Complete Round 1 first'};
+    return BRACKET_ROUNDS[0][w0==='a'?'a':'b'];
+  };
+
+  const progress=step==='brief'?15:
+    (Object.values(agrees).filter(v=>v!==null).length/3*25+
+     (belief?10:0)+
+     (Object.keys(layerClarity).length/6*10)+
+     (Object.values(bracketWinners).filter(v=>v!==null).length/3*15)+
+     ((mustHave&&blocker)?15:0))+15;
+
+  const canSubmit=belief&&
+    Object.values(agrees).every(v=>v!==null)&&
+    mustHave&&blocker&&
+    Object.values(bracketWinners).every(v=>v!==null);
+
+  const submit=async()=>{
+    setSubmitting(true);
+    const payload={
+      identity:identity?{name,role}:null,
+      belief,
+      agrees:{
+        strategicFit:agrees[0],
+        replicability:agrees[1],
+        jcTransformation:agrees[2],
+      },
+      layerClarity,layerImportance,
+      bracketWinners:{
+        r1:bracketWinners[0]===null?null:BRACKET_ROUNDS[0][bracketWinners[0]==='a'?'a':'b'].id,
+        r2:bracketWinners[1]===null?null:BRACKET_ROUNDS[1][bracketWinners[1]==='a'?'a':'b'].id,
+        r3:bracketWinners[2]===null?null:(bracketWinners[2]==='a'?getR3A().id:'F5'),
+      },
+      mustHave,blocker,
+    };
+    const ok=await saveResponse(payload);
+    if(ok) cacheResponse(payload);
+    setSubmitting(false);
+    if(ok) setStep('done');
+    else setSubmitError(true);
+  };
+
+  if(step==='done') return(
+    <div className="wrap">
+      <div className="thankyou">
+        <div className="ty-icon">◈</div>
+        <div className="ty-title">Thank you.</div>
+        <div className="ty-sub">Your response has been recorded. Every signal shapes what we build — and your contribution is permanently part of that process.</div>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="wrap">
+      <div className="progress-bar"><div className="progress-fill" style={{width:`${Math.min(100,progress)}%`}}/></div>
+
+      {/* HERO */}
+      <div className="hero">
+        <div className="hero-label">Implement Consulting Group · Field Brief</div>
+        <div className="hero-title">Transformation OS<br/>& Kotter Engine</div>
+        <div className="hero-sub">You are being asked to help shape a product that could fundamentally change how Implement competes. This is not a demo. It is a working prototype built on a strategic thesis. Read the brief. Experience the prototype. Tell us what you think.</div>
+        <div className="hero-tagline">"To build intelligence fit for clients, you must build it fit for consultants."</div>
+      </div>
+
+      {/* BRIEF */}
+      <div className="card">
+        <div className="card-hdr"><div className="card-title">01 · The Hypothesis</div></div>
+        <div className="card-body">
+          <div style={{fontSize:14,lineHeight:1.75,color:'var(--charcoal)',marginBottom:14}}>
+            Implement is sitting on a Heritage AI goldmine: decades of proprietary, ground-truth data on human behavioral change and organisational resistance. <strong>AI tool augmentation is not a strategy.</strong>
+          </div>
+          <div style={{padding:'14px 16px',background:'var(--pale)',borderLeft:'3px solid var(--charcoal)',borderRadius:'0 2px 2px 0',marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:'var(--charcoal)',marginBottom:8,letterSpacing:'.5px',textTransform:'uppercase',fontFamily:'var(--f-mono)'}}>Three interlocking variables</div>
+            {['A culture of high agency — consultants bring passion, mastery, creativity, and entrepreneurial spirit. Quality of thinking compounds with every person and every year.',
+              'A relentless focus on real outcomes through effective change — not frameworks, not reports, but transformation that holds. Client trust compounds with every engagement.',
+              'A meaningful use of technology — AI that amplifies human judgment, never substitutes for it. Institutional intelligence compounds with every hypothesis debated and every outcome recorded.'
+            ].map((t,i)=>(
+              <div key={i} style={{display:'flex',gap:10,marginBottom:8,fontSize:13,color:'var(--charcoal)',lineHeight:1.6}}>
+                <span style={{fontFamily:'var(--f-mono)',fontSize:10,color:'var(--mid)',flexShrink:0,paddingTop:2}}>{i+1}.</span>{t}
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:13,color:'var(--mid)',fontStyle:'italic',lineHeight:1.6}}>These three variables reinforce each other. High agency produces better hypotheses. Better hypotheses produce better outcomes. Better outcomes deepen the Heritage corpus. The fit between them is what makes the position difficult to replicate.</div>
+        </div>
+      </div>
+
+      {/* ARCHITECTURE */}
+      <div className="card">
+        <div className="card-hdr"><div className="card-title">02 · Six-Layer OS Architecture</div></div>
+        <div className="card-body" style={{paddingBottom:4}}>
+          {LAYERS.map((l,i)=>(
+            <div key={i} className="layer-row">
+              <div className="layer-num-badge">{l.num}</div>
+              <div className="layer-bar"/>
+              <div style={{flex:1}}>
+                <div className="layer-name">{l.name}</div>
+                <div className="layer-desc">{l.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* KILLER FEATURES */}
+      <div className="card">
+        <div className="card-hdr"><div className="card-title">03 · Five Killer Features</div></div>
+        <div className="card-body">
+          <div className="feature-grid">
+            {FEATURES.map((f,i)=>(
+              <div key={i} className="feature-card">
+                <div className="feature-num">{f.num}</div>
+                <div className="feature-name">{f.name}</div>
+                <div className="feature-desc">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* PROTOTYPE LINK */}
+      <div className="card">
+        <div className="card-hdr"><div className="card-title">04 · Experience the Prototype</div></div>
+        <div className="card-body">
+          <div className="proto-box">
+            <div className="proto-text">
+              <div className="proto-title">Transformation OS — Interactive Prototype</div>
+              <div className="proto-sub">The prototype is in the same folder as this file. Open <strong>kotter-engine.html</strong> in your browser. The experience begins on a landing screen — choose your role (Senior Partner or Junior Consultant) and follow the guided steps. Come back here to complete the instruments below.</div>
+            </div>
+            <div style={{flexShrink:0,padding:'10px 18px',background:'var(--charcoal)',color:'white',borderRadius:2,fontFamily:'var(--f-mono)',fontSize:10,letterSpacing:'1.5px',textTransform:'uppercase',whiteSpace:'nowrap'}}>kotter-engine.html</div>
+          </div>
+          <div style={{marginTop:10,padding:'10px 12px',background:'var(--pale)',border:'1px solid var(--light)',borderRadius:2}}>
+            <div style={{fontFamily:'var(--f-mono)',fontSize:9,color:'var(--charcoal)',letterSpacing:1,textTransform:'uppercase',marginBottom:5}}>Suggested path through the prototype</div>
+            {['Step 1 — Product Vision: read the hypothesis and strategic fit (2 min)',
+              'Step 2 — OS Architecture: expand each of the 6 layers to understand the engine (3 min)',
+              'Step 3 — Choose your role: Senior Partner for the War Room experience, Junior Consultant for the Hypothesis Engine',
+              'Step 4 — Complete all steps in your chosen path, then return here to respond'
+            ].map((s,i)=>(
+              <div key={i} style={{display:'flex',gap:8,fontSize:11,color:'var(--mid)',padding:'3px 0',borderBottom:'1px solid var(--light)'}}>
+                <span style={{color:'var(--charcoal)',flexShrink:0}}>→</span>{s}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ INSTRUMENTS ═══ */}
+      <div className="card">
+        <div className="card-hdr">
+          <div className="card-title">05 · Your Response</div>
+          <div style={{fontFamily:'var(--f-mono)',fontSize:9,color:'var(--mid)',letterSpacing:1}}>~8 minutes</div>
+        </div>
+        <div className="card-body">
+
+          {/* INSTRUMENT 1 — BELIEF CHECK */}
+          <div className="instrument">
+            <div className="inst-label"><span className="inst-num">I · 01</span>Belief Check</div>
+            <div className="inst-question">Complete this sentence:</div>
+            <div className="belief-prefix">The most defensible thing about this product is...</div>
+            <textarea className="belief-input" rows={3}
+              placeholder="Write what comes to mind first. There is no wrong answer."
+              value={belief} onChange={e=>setBelief(e.target.value)}/>
+          </div>
+
+          {/* INSTRUMENT 2 — STRATEGIC FIT */}
+          <div className="instrument">
+            <div className="inst-label"><span className="inst-num">I · 02</span>Strategic Fit Test</div>
+            <div className="inst-question">Rate your agreement with each statement.</div>
+            {STATEMENTS.map((s,i)=>(
+              <div key={i} className="agree-row">
+                <div className="agree-statement">{s}</div>
+                <AgreeScale value={agrees[i]} onChange={v=>setAgrees(a=>({...a,[i]:v}))}/>
+              </div>
+            ))}
+          </div>
+
+          {/* INSTRUMENT 3 — LAYER HEAT MAP */}
+          <div className="instrument">
+            <div className="inst-label"><span className="inst-num">I · 03</span>Layer Reaction</div>
+            <div className="inst-question">Rate each OS layer on two dimensions.</div>
+            <div className="inst-hint">This takes 60 seconds. Your gut reaction is more valuable than a considered opinion.</div>
+            <div className="heatmap-row-hdr">
+              <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--mid)',letterSpacing:1,textTransform:'uppercase'}}>Layer</div>
+              <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--mid)',letterSpacing:1,textTransform:'uppercase',textAlign:'center'}}>Name clarity<br/><span style={{opacity:.6}}>Clear · Ok · Unclear</span></div>
+              <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--mid)',letterSpacing:1,textTransform:'uppercase',textAlign:'center'}}>Importance to you<br/><span style={{opacity:.6}}>High · Mid · Low</span></div>
+            </div>
+            {LAYERS.map((l,i)=>(
+              <div key={i} className="heatmap-row">
+                <div>
+                  <span className="heatmap-num">{l.num}</span>
+                  <span className="heatmap-name">{l.name}</span>
+                </div>
+                <div className="rating-btns" style={{justifyContent:'center'}}>
+                  {['Clear','Ok','Unclear'].map((lbl,j)=>(
+                    <div key={j}
+                      className={`rating-btn${layerClarity[i]===j+1?` sel-${j+1}`:''}`}
+                      onClick={()=>setLayerClarity(c=>({...c,[i]:j+1}))}>
+                      {lbl}
+                    </div>
+                  ))}
+                </div>
+                <div className="rating-btns" style={{justifyContent:'center'}}>
+                  {['High','Mid','Low'].map((lbl,j)=>(
+                    <div key={j}
+                      className={`rating-btn${layerImportance[i]===j+1?` sel-${j+1}`:''}`}
+                      onClick={()=>setLayerImportance(c=>({...c,[i]:j+1}))}>
+                      {lbl}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* INSTRUMENT 4 — FEATURE DUEL */}
+          <div className="instrument">
+            <div className="inst-label"><span className="inst-num">I · 04</span>Feature Duel</div>
+            <div className="inst-question">If Implement could only build one — which would you choose?</div>
+            <div className="inst-hint">Three rounds. One click each. Round 3 pits the winner of Round 1 against The Human Layer.</div>
+            <div className="bracket-wrap">
+              {BRACKET_ROUNDS.map((round,ri)=>{
+                const optA=ri===2?getR3A():round.a;
+                const optB=round.b;
+                const winner=bracketWinners[ri];
+                const r3Locked=ri===2&&!bracketWinners[0];
+                return(
+                  <div key={ri} className="bracket-round" style={r3Locked?{opacity:.4,pointerEvents:'none'}:{}}>
+                    <div className="bracket-hdr">
+                      <span>{round.round}{round.label?` — ${round.label}`:''}</span>
+                      {r3Locked&&<span>Complete Round 1 first</span>}
+                    </div>
+                    <div className="bracket-match">
+                      <div className={`bracket-option${winner==='a'?' chosen':winner!==null?' eliminated':''}`}
+                        onClick={()=>setBracketWinners(w=>({...w,[ri]:'a'}))}>
+                        <div className="bracket-feat-name">{optA.name}</div>
+                        <div className="bracket-feat-sub">{optA.sub||optA.desc||''}</div>
+                      </div>
+                      <div className="bracket-vs">vs</div>
+                      <div className={`bracket-option${winner==='b'?' chosen':winner!==null?' eliminated':''}`}
+                        onClick={()=>setBracketWinners(w=>({...w,[ri]:'b'}))}>
+                        <div className="bracket-feat-name">{optB.name}</div>
+                        <div className="bracket-feat-sub">{optB.sub||optB.desc||''}</div>
+                      </div>
+                    </div>
+                    {winner!==null&&(
+                      <div className="bracket-winner">
+                        <div className="bracket-winner-label">Your pick →</div>
+                        <div className="bracket-winner-name">{winner==='a'?optA.name:optB.name}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* INSTRUMENT 5 — ONE SIGNAL */}
+          <div className="instrument">
+            <div className="inst-label"><span className="inst-num">I · 05</span>The One Signal</div>
+            <div className="inst-question">Two questions. No word limit. These are the most important answers you'll give.</div>
+            <div className="signal-pair">
+              <div>
+                <div className="signal-label">What is the one thing this product must do to earn a permanent place in your engagement workflow?</div>
+                <textarea className="signal-textarea" placeholder="Be specific. Name a moment, a situation, a client type."
+                  value={mustHave} onChange={e=>setMustHave(e.target.value)}/>
+              </div>
+              <div>
+                <div className="signal-label">What is the one thing that would stop you from using it?</div>
+                <textarea className="signal-textarea" placeholder="Be honest. This is the most valuable feedback we can receive."
+                  value={blocker} onChange={e=>setBlocker(e.target.value)}/>
+              </div>
+            </div>
+          </div>
+
+          {/* IDENTITY */}
+          <div className="identity-box">
+            <div className="identity-row">
+              <div>
+                <div className="identity-label">Share your identity?</div>
+                <div className="identity-sub">Anonymous by default. Toggle to add your name and role.</div>
+              </div>
+              <Toggle on={identity} onChange={()=>setIdentity(!identity)}/>
+            </div>
+            {identity&&(
+              <div className="identity-fields">
+                <input className="identity-input" placeholder="Your name" value={name} onChange={e=>setName(e.target.value)}/>
+                <input className="identity-input" placeholder="Your role (e.g. Senior Partner)" value={role} onChange={e=>setRole(e.target.value)}/>
+              </div>
+            )}
+          </div>
+
+          {submitError&&<div style={{padding:'8px 12px',background:'#FBF0EE',border:'1px solid #DDB8B0',borderRadius:2,fontSize:12,color:'var(--risk)',marginBottom:10}}>Something went wrong saving your response. Please try again.</div>}
+
+          <button className="submit-btn" disabled={!canSubmit||submitting} onClick={submit}>
+            {submitting?'Submitting...':'Submit Response →'}
+          </button>
+          {!canSubmit&&<div style={{fontSize:11,color:'var(--mid)',marginTop:6,textAlign:'center',fontStyle:'italic'}}>Complete all five instruments to submit.</div>}
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════
+   RESULTS DASHBOARD
+═══════════════════════════════════ */
+function ResultsDashboard(){
+  const [responses,setResponses]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState(null);
+
+  useEffect(()=>{
+    loadResponses().then(r=>{setResponses(r);setLoading(false);});
+  },[]);
+
+  const refresh=async()=>{
+    setLoading(true);
+    const r=await loadResponses();
+    setResponses(r);
+    setLoading(false);
+  };
+
+  if(loading) return <div className="wrap"><div className="empty-state">Loading responses...</div></div>;
+
+  const n=responses.length;
+
+  // Agree averages
+  const agreeAvg=(key)=>{
+    const vals=responses.map(r=>r.agrees?.[key]).filter(v=>v!=null);
+    if(!vals.length) return null;
+    return (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+  };
+
+  // Feature duel tallies
+  const featureTally={};
+  FEATURES.forEach(f=>featureTally[f.id]=0);
+  responses.forEach(r=>{
+    if(r.bracketWinners){
+      Object.values(r.bracketWinners).forEach(id=>{
+        if(id&&featureTally[id]!==undefined) featureTally[id]++;
+      });
+    }
+  });
+  const sortedFeatures=Object.entries(featureTally).sort((a,b)=>b[1]-a[1]);
+
+  // Layer importance tally
+  const layerHighCount=LAYERS.map((_,i)=>{
+    return responses.filter(r=>r.layerImportance&&r.layerImportance[i]===1).length;
+  });
+
+  const formatTime=(ts)=>{
+    if(!ts) return '';
+    const d=new Date(ts);
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  };
+
+  return(
+    <div className="wrap">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,paddingBottom:14,borderBottom:'2px solid var(--charcoal)'}}>
+        <div>
+          <div style={{fontFamily:'var(--f-serif)',fontSize:24,fontWeight:500,color:'var(--charcoal)'}}>Results Dashboard</div>
+          <div style={{fontFamily:'var(--f-mono)',fontSize:9,color:'var(--mid)',letterSpacing:2,marginTop:2}}>TRANSFORMATION OS · FIELD BRIEF</div>
+        </div>
+        <button onClick={refresh} style={{padding:'7px 14px',border:'1px solid var(--light)',borderRadius:2,background:'var(--white)',fontFamily:'var(--f-mono)',fontSize:9,letterSpacing:1,cursor:'pointer',color:'var(--mid)',textTransform:'uppercase'}}>↻ Refresh</button>
+      </div>
+      <div style={{padding:'10px 14px',background:'#EEF3F8',border:'1px solid #BDD0E0',borderRadius:2,marginBottom:16,fontSize:12,color:'var(--info)',lineHeight:1.6}}>
+        <strong>All responses are saved to your Google Sheet in real time.</strong> This dashboard shows responses submitted in this browser session. To see all responses across all participants, open your Google Sheet directly at sheets.google.com.
+      </div>
+
+      {n===0?(
+        <div className="empty-state">No responses yet. Share the participant link to start collecting.</div>
+      ):(
+        <>
+          {/* SUMMARY STATS */}
+          <div className="dash-grid">
+            <div className="dash-stat"><div className="dash-val">{n}</div><div className="dash-label">Responses</div></div>
+            <div className="dash-stat"><div className="dash-val">{responses.filter(r=>r.identity).length}</div><div className="dash-label">Identified</div></div>
+            <div className="dash-stat"><div className="dash-val">{agreeAvg('strategicFit')??'—'}</div><div className="dash-label">Avg strategic fit score</div></div>
+          </div>
+
+          {/* BELIEF CHECK — OPEN TEXT */}
+          <div className="card">
+            <div className="card-hdr"><div className="card-title">I·01 · Belief Check — Open Text</div></div>
+            <div className="card-body" style={{paddingBottom:4}}>
+              {responses.map((r,i)=>(
+                <div key={i} style={{marginBottom:10,padding:'10px 14px',background:'var(--pale)',borderLeft:'2px solid var(--charcoal)',borderRadius:'0 2px 2px 0'}}>
+                  <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--mid)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>
+                    {r.identity?`${r.identity.name} · ${r.identity.role}`:'Anonymous'}
+                  </div>
+                  <div style={{fontFamily:'var(--f-serif)',fontSize:14,color:'var(--charcoal)',lineHeight:1.6,fontStyle:'italic'}}>
+                    "...{r.belief}"
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* STRATEGIC FIT */}
+          <div className="card">
+            <div className="card-hdr"><div className="card-title">I·02 · Strategic Fit Test — Average Scores (1–5)</div></div>
+            <div className="card-body">
+              <div className="agree-summary">
+                {[['strategicFit','Reflects how Implement thinks about its advantage'],['replicability','A competitor could replicate this within 2 years'],['jcTransformation','Changes what it means to be a Junior Consultant']].map(([key,label])=>{
+                  const avg=agreeAvg(key);
+                  return(
+                    <div key={key} className="agree-sum-row">
+                      <div className="agree-sum-label">{label}</div>
+                      <div className="agree-sum-bar"><div className="agree-sum-fill" style={{width:`${avg?avg/5*100:0}%`}}/></div>
+                      <div className="agree-sum-score">{avg??'—'}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:11,color:'var(--mid)',fontStyle:'italic'}}>Note: for Statement B (replicability), a low score (1–2) is the desired outcome — it means respondents believe the moat is strong.</div>
+            </div>
+          </div>
+
+          {/* FEATURE DUEL */}
+          <div className="card">
+            <div className="card-hdr"><div className="card-title">I·04 · Feature Duel — Total Wins</div></div>
+            <div className="card-body">
+              <div className="bar-chart">
+                {sortedFeatures.map(([id,count])=>{
+                  const feat=FEATURES.find(f=>f.num===id)||{name:id};
+                  return(
+                    <div key={id} className="bar-row">
+                      <div className="bar-name">{feat.name}</div>
+                      <div className="bar-track"><div className="bar-fill" style={{width:n>0?`${count/n*100}%`:'0%'}}/></div>
+                      <div className="bar-count">{count}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* LAYER IMPORTANCE */}
+          <div className="card">
+            <div className="card-hdr"><div className="card-title">I·03 · Layer Importance — "High" Votes</div></div>
+            <div className="card-body">
+              <div className="bar-chart">
+                {LAYERS.map((l,i)=>(
+                  <div key={i} className="bar-row">
+                    <div className="bar-name" style={{fontSize:11}}><span style={{fontFamily:'var(--f-mono)',fontSize:9,color:'var(--mid)',marginRight:4}}>{l.num}</span>{l.name}</div>
+                    <div className="bar-track"><div className="bar-fill" style={{width:n>0?`${layerHighCount[i]/n*100}%`:'0%'}}/></div>
+                    <div className="bar-count">{layerHighCount[i]}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ONE SIGNAL */}
+          <div className="card">
+            <div className="card-hdr"><div className="card-title">I·05 · The One Signal — Must-Haves & Blockers</div></div>
+            <div className="card-body">
+              {responses.map((r,i)=>(
+                <div key={i} style={{marginBottom:16,paddingBottom:16,borderBottom:'1px solid var(--light)'}}>
+                  <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--mid)',letterSpacing:1,marginBottom:8,textTransform:'uppercase'}}>
+                    {r.identity?`${r.identity.name} · ${r.identity.role}`:'Anonymous'}
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    <div>
+                      <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--ok)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Must have</div>
+                      <div style={{fontSize:12,color:'var(--charcoal)',lineHeight:1.6,padding:'8px 10px',background:'#F0F7F0',borderRadius:2}}>{r.mustHave}</div>
+                    </div>
+                    <div>
+                      <div style={{fontFamily:'var(--f-mono)',fontSize:8,color:'var(--risk)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Blocker</div>
+                      <div style={{fontSize:12,color:'var(--charcoal)',lineHeight:1.6,padding:'8px 10px',background:'#FBF0EE',borderRadius:2}}>{r.blocker}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════
+   APP
+═══════════════════════════════════ */
+function App(){
+  const [view,setView]=useState('participant');
+  return(
+    <>
+    <style>{CSS}</style>
+    <nav className="top-nav">
+      <div className="top-nav-logo">Implement · Transformation OS · Field Brief</div>
+      <div className="top-nav-right">
+        <button className={`nav-btn${view==='participant'?' active':''}`} onClick={()=>setView('participant')}>Participant View</button>
+        <button className={`nav-btn${view==='results'?' active':''}`} onClick={()=>setView('results')}>Results Dashboard</button>
+      </div>
+    </nav>
+    {view==='participant'?<ParticipantView/>:<ResultsDashboard/>}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
