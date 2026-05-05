@@ -836,9 +836,845 @@ function NeuralNet({baseNeurons,newNeurons,animated,compact}){
 /* ══════════════════════════════════
    LANDING
 ══════════════════════════════════ */
+/* ══════════════════════════════════
+   ORIENTATION OVERLAY
+══════════════════════════════════ */
+const ORI_SCREENS=[
+  {
+    tag:"The Problem",
+    title:"Only 1 in 3 change efforts succeed.",
+    sub:"Implement's own assessment of the industry they've built their firm around.",
+    body:"Kotter's research tells us the second most common reason transformations fail isn't the strategy or the budget. It's this: leaders fail to build a guiding coalition early enough. The right people aren't in the room. The wrong people resist without anyone seeing it coming. By the time a Senior Partner realises the political landscape has shifted — the window has already closed.",
+    stat:{val:"33%",label:"Change efforts succeed today",color:"#8C3A3A",bg:"#FBF0EE"},
+    kicker:"In an AI era, where clients are running more transformations faster, this failure rate is getting more expensive by the month.",
+  },
+  {
+    tag:"How It Works — Live Simulation",
+    title:"Watch the engine process a real stakeholder.",
+    sub:"Marcus Webb, CFO — illustrative persona. See how input becomes recommendation.",
+    body:null,
+    flow:null,
+    kicker:"The Resistance Score is a weighted composite of four signals — structural threat, behavioral archetype base rate, incentive misalignment, and heritage pattern signals. It updates dynamically as the engagement moves through Kotter phases.",
+  },
+  {
+    tag:"What Changes",
+    title:"Flying blind to flying with evidence.",
+    sub:"What this means for the Senior Partner and the Junior Consultant.",
+    body:null,
+    personas:[
+      {role:"Senior Partner",color:"#3A6080",icon:"◈",before:"Carries 30 years of pattern recognition in their head. Every engagement starts from scratch. Political landscape shifts are invisible until too late.",after:"Enters every room knowing who resists, why, in what order to engage, and what worked in the 94% analogous transformation. Backed by evidence, not intuition."},
+      {role:"Junior Consultant",color:"#3A6B4A",icon:"◎",before:"Builds models and slides. High volume, lower judgment. Development is slow because the scaffolding work crowds out the thinking work.",after:"Stops doing prep and starts developing judgment. The Hypothesis Engine makes them debate AI reasoning — faster growth, a stronger bench, a firm that scales without just adding headcount."},
+    ],
+    kicker:"Every engagement run through this system generates new behavioral data — which means the recommendations get sharper with every transformation.",
+  },
+  {
+    tag:"From Feature to Platform",
+    title:"The system behind what you just saw.",
+    sub:"How this one feature connects to six layers, three strategic strengths, and a business model that doesn’t exist yet in consulting.",
+    body:null,
+    personas:null,
+    flow:null,
+    kicker:null,
+  },
+];
+
+/* ══════════════════════════════════
+   SIMULATION SCREEN — IMMERSIVE DEMO
+══════════════════════════════════ */
+function SimulationScreen(){
+  const [simStep,setSimStep]=useState(-1);
+
+  const startSim=()=>setSimStep(0);
+  const nextStep=()=>{if(simStep>=0&&simStep<5)setSimStep(s=>s+1);};
+  const reset=()=>setSimStep(-1);
+  const done=simStep>=5;
+
+  const Src=({type})=>(
+    <span style={{
+      fontFamily:"var(--mono)",fontSize:7,letterSpacing:"1.2px",textTransform:"uppercase",
+      padding:"2px 7px",flexShrink:0,
+      background:type==="sp"?"rgba(58,96,128,0.12)":"rgba(122,92,32,0.12)",
+      border:type==="sp"?"1px solid rgba(58,96,128,0.35)":"1px solid rgba(122,92,32,0.35)",
+      color:type==="sp"?"#3A6080":"#7A5C20",
+    }}>{type==="sp"?"SP Input":"Heritage"}</span>
+  );
+
+  const STEP_LABELS=["Stakeholder Input","Archetype Classification","Resistance Score","Heritage Match","Recommendation"];
+
+  const DoneStrip=({idx,summary})=>(
+    <div style={{
+      display:"flex",alignItems:"center",gap:10,
+      padding:"6px 20px",
+      background:"rgba(58,107,74,0.06)",
+      borderBottom:"1px solid rgba(58,107,74,0.1)",
+    }}>
+      <div style={{
+        width:18,height:18,borderRadius:"50%",
+        background:"#3A6B4A",color:"#fff",
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontFamily:"var(--mono)",fontSize:8,flexShrink:0,
+      }}>✓</div>
+      <div style={{fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1px",textTransform:"uppercase",color:"#3A6B4A",flexShrink:0,minWidth:160}}>
+        Step {idx+1} · {STEP_LABELS[idx]}
+      </div>
+      <div style={{fontSize:11,color:"var(--mid)",fontStyle:"italic"}}>{summary}</div>
+    </div>
+  );
+
+  return(
+    <div style={{position:"relative"}}>
+
+      {/* ── IDLE ── */}
+      {simStep<0&&(
+        <div style={{
+          display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",padding:"44px 24px",gap:14,
+          background:"var(--pale)",
+        }}>
+          <div style={{fontSize:32,opacity:.1}}>◈</div>
+          <div style={{textAlign:"center",maxWidth:360}}>
+            <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"2px",textTransform:"uppercase",color:"var(--mid)",marginBottom:6}}>
+              Actors Layer · Heritage Match Engine
+            </div>
+            <div style={{fontSize:13,color:"var(--ch)",lineHeight:1.65}}>
+              Watch a Senior Partner input become an evidence-backed engagement recommendation — five steps, one stakeholder at a time.
+            </div>
+          </div>
+          <button onClick={startSim} style={{
+            background:"var(--dk)",color:"#E8E4DC",border:"none",
+            padding:"12px 36px",cursor:"pointer",
+            fontFamily:"var(--mono)",fontSize:10,letterSpacing:"2px",textTransform:"uppercase",
+            marginTop:4,
+          }}>See it in action →</button>
+        </div>
+      )}
+
+      {/* ── ACTIVE / DONE ── */}
+      {simStep>=0&&(
+        <div>
+          {/* COMPLETED STEP STRIPS */}
+          {simStep>0&&<DoneStrip idx={0} summary="Marcus Webb · CFO · Signals loaded"/>}
+          {simStep>1&&<DoneStrip idx={1} summary="ROI Skeptic confirmed"/>}
+          {simStep>2&&<DoneStrip idx={2} summary="Score: 72 / HIGH · 4 dimensions"/>}
+          {simStep>3&&<DoneStrip idx={3} summary="Nordic Life 94% · Zurich 87% · Tryg 81%"/>}
+          {done&&<DoneStrip idx={4} summary="Engage 4th — 87% confidence"/>}
+
+          {/* ACTIVE STEP PANEL */}
+          {!done&&(
+            <div style={{background:"var(--wh)",position:"relative"}}>
+
+              {/* STEP LABEL — full width, unmissable */}
+              <div style={{
+                padding:"14px 20px",
+                background:"#3A6080",
+                display:"flex",alignItems:"center",justifyContent:"space-between",
+              }}>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{
+                    fontFamily:"var(--mono)",fontSize:22,fontWeight:400,
+                    color:"rgba(255,255,255,.9)",lineHeight:1,
+                    letterSpacing:"-1px",
+                  }}>0{simStep+1}</div>
+                  <div style={{width:1,height:28,background:"rgba(255,255,255,.2)"}}/>
+                  <div>
+                    <div style={{fontFamily:"var(--mono)",fontSize:11,letterSpacing:"2px",textTransform:"uppercase",color:"rgba(255,255,255,.9)"}}>
+                      Step {simStep+1} of 5
+                    </div>
+                    <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"1.5px",textTransform:"uppercase",color:"rgba(255,255,255,.55)",marginTop:2}}>
+                      {STEP_LABELS[simStep]}
+                    </div>
+                  </div>
+                </div>
+                {/* RESET — terracotta, unmissable */}
+                <button onClick={reset} style={{
+                  background:"rgba(184,58,26,0.9)",color:"#fff",
+                  border:"none",padding:"6px 14px",cursor:"pointer",
+                  fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+                  display:"flex",alignItems:"center",gap:5,
+                }}>↺ Start Over</button>
+              </div>
+
+              {/* STEP CONTENT */}
+              <div style={{padding:"20px",minHeight:220,animation:"fadeIn .4s ease"}}>
+
+                {/* STEP 1 */}
+                {simStep===0&&(
+                  <div>
+                    <div style={{fontSize:12,color:"var(--mid)",marginBottom:14,fontStyle:"italic"}}>
+                      What the Senior Partner feeds into the system
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                      <div style={{padding:"14px",border:"1px solid rgba(58,96,128,0.22)",background:"rgba(58,96,128,0.04)"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                          <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--mid)"}}>Identity</div>
+                          <Src type="sp"/>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          <div style={{
+                            width:36,height:36,borderRadius:"50%",
+                            background:"#D4896A20",border:"1px solid #D4896A40",
+                            display:"flex",alignItems:"center",justifyContent:"center",
+                            fontFamily:"var(--serif)",fontSize:16,color:"#D4896A",flexShrink:0,
+                          }}>M</div>
+                          <div>
+                            <div style={{fontFamily:"var(--serif)",fontSize:15,color:"var(--ink)"}}>Marcus Webb</div>
+                            <div style={{fontFamily:"var(--mono)",fontSize:8,color:"var(--mid)",letterSpacing:"1px",textTransform:"uppercase"}}>Chief Financial Officer</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{padding:"14px",border:"1px solid rgba(58,96,128,0.22)",background:"rgba(58,96,128,0.04)"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--mid)"}}>Incentive Structure</div>
+                          <Src type="sp"/>
+                        </div>
+                        <div style={{fontSize:12,color:"var(--ch)",lineHeight:1.55,fontStyle:"italic"}}>
+                          "Rewarded for cost control and ROI. Digital Twin has unclear short-term return."
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{padding:"13px",border:"1px solid rgba(58,96,128,0.22)",background:"rgba(58,96,128,0.04)"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--mid)"}}>Known Resistance Signals</div>
+                        <Src type="sp"/>
+                      </div>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        {["Challenged last 2 AI initiatives","Requested 3-year NPV before pilot","Absent from digital strategy meetings"].map((s,i)=>(
+                          <div key={i} style={{padding:"4px 10px",background:"var(--wh)",border:"1px solid rgba(58,96,128,0.2)",fontSize:11,color:"var(--ch)"}}>{s}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2 */}
+                {simStep===1&&(
+                  <div>
+                    <div style={{fontSize:12,color:"var(--mid)",marginBottom:14,fontStyle:"italic"}}>
+                      Heritage engine pattern-matches resistance signals against behavioral database
+                    </div>
+                    <div style={{
+                      padding:"20px",border:"2px solid #D4896A40",
+                      background:"#D4896A06",marginBottom:12,
+                    }}>
+                      <div style={{display:"flex",alignItems:"flex-start",gap:16}}>
+                        <div style={{fontSize:44,color:"#D4896A",lineHeight:1,flexShrink:0}}>◐</div>
+                        <div style={{flex:1}}>
+                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                            <div style={{fontFamily:"var(--serif)",fontSize:24,color:"#D4896A"}}>ROI Skeptic</div>
+                            <Src type="heritage"/>
+                          </div>
+                          <div style={{fontSize:13,color:"var(--ch)",lineHeight:1.65,marginBottom:10}}>
+                            CFO resistance is structural, not personal. Role exists to protect capital allocation. Pattern-matched across 247 engagements with 91% confidence.
+                          </div>
+                          <div style={{padding:"9px 12px",background:"var(--wh)",border:"1px solid #D4896A20",fontFamily:"var(--mono)",fontSize:9,color:"var(--mid)",letterSpacing:"1px"}}>
+                            BASE RESISTANCE RATE: <span style={{color:"#8C3A3A",fontWeight:600}}>68–75 / 100</span> in capital-allocation roles during AI transformations
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{padding:"10px 14px",background:"rgba(58,96,128,0.04)",border:"1px solid rgba(58,96,128,0.12)",fontSize:11,color:"var(--mid)",lineHeight:1.55}}>
+                      Other archetypes in the system: Visionary Champion · Territory Protector · Tech Opportunist · People Guardian · Frontline Resistor
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3 */}
+                {simStep===2&&(
+                  <div>
+                    <div style={{fontSize:12,color:"var(--mid)",marginBottom:14,fontStyle:"italic"}}>
+                      Weighted composite computed across four signal dimensions
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:16,padding:"16px",border:"1px solid #8C3A3A25",background:"#8C3A3A04"}}>
+                      <div style={{fontFamily:"var(--serif)",fontSize:80,color:"#8C3A3A",lineHeight:1,flexShrink:0}}>72</div>
+                      <div style={{flex:1}}>
+                        <div style={{height:10,background:"var(--lt)",borderRadius:2,overflow:"hidden",marginBottom:6}}>
+                          <div style={{height:"100%",width:"72%",background:"linear-gradient(90deg,#D4896A,#8C3A3A)",borderRadius:2,animation:"progressBar 1.4s ease forwards"}}/>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontFamily:"var(--mono)",fontSize:8,color:"var(--mid)"}}>
+                          <span>LOW (0)</span><span style={{color:"#8C3A3A",fontWeight:600}}>HIGH RISK — 72/100</span><span>(100)</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      {[
+                        {label:"Structural Threat",value:"HIGH",score:85,color:"#8C3A3A",src:"heritage",desc:"CFO role structurally threatened by AI reducing financial modeling oversight"},
+                        {label:"Incentive Misalignment",value:"HIGH",score:78,color:"#8C3A3A",src:"sp",desc:"Rewarded for cost control — investment conflicts with short-term KPIs"},
+                        {label:"Archetype Base Rate",value:"72",score:72,color:"#7A5C20",src:"heritage",desc:"ROI Skeptic historically scores 68–75 in capital-allocation roles"},
+                        {label:"Heritage Pattern Signal",value:"3 matches",score:65,color:"#3A6080",src:"heritage",desc:"3 heritage engagements with identical CFO profile — avg score 71"},
+                      ].map((d,i)=>(
+                        <div key={i} style={{padding:"12px",border:`1px solid ${d.color}22`,background:`${d.color}04`,animation:`fadeIn .4s ease ${i*0.1}s both`}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                            <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1px",textTransform:"uppercase",color:"var(--mid)"}}>{d.label}</div>
+                            <Src type={d.src}/>
+                          </div>
+                          <div style={{fontFamily:"var(--serif)",fontSize:18,color:d.color,marginBottom:5}}>{d.value}</div>
+                          <div style={{height:3,background:"var(--lt)",borderRadius:2,overflow:"hidden",marginBottom:5}}>
+                            <div style={{height:"100%",width:`${d.score}%`,background:d.color,borderRadius:2,animation:"progressBar .8s ease"}}/>
+                          </div>
+                          <div style={{fontSize:10,color:"var(--mid)",lineHeight:1.5}}>{d.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 4 */}
+                {simStep===3&&(
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,padding:"8px 12px",background:"rgba(122,92,32,0.06)",border:"1px solid rgba(122,92,32,0.2)"}}>
+                      <Src type="heritage"/>
+                      <div style={{fontSize:12,color:"var(--ch)"}}>Scanning 247 indexed engagements · insurance vertical · claims AI · CFO ROI Skeptic</div>
+                    </div>
+                    {[
+                      {client:"Nordic Life Insurance",year:2021,sim:94,outcome:"SUCCESS",adoption:78,color:"#3A6B4A",lesson:"CFO resistance neutralized by ROI simulation in week 3. Approached 4th, after CTO and CEO signalled support.",delay:0},
+                      {client:"Zurich Financial (DE)",year:2020,sim:87,outcome:"PARTIAL",adoption:52,color:"#7A5C20",lesson:"Warning: frontline engaged before coalition locked. Direct failure signal — do not repeat.",delay:200},
+                      {client:"Tryg A/S",year:2022,sim:81,outcome:"SUCCESS",adoption:85,color:"#3A6B4A",lesson:"Reframe from 'replacement' to 'augmentation' moved Claims VP adoption from 40% to 85%.",delay:400},
+                    ].map((h,i)=>(
+                      <div key={i} style={{border:`1px solid ${h.color}28`,marginBottom:8,overflow:"hidden",animation:`fadeIn .5s ease ${h.delay}ms both`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:0}}>
+                          <div style={{fontFamily:"var(--serif)",fontSize:30,color:h.color,padding:"12px 16px",background:`${h.color}08`,borderRight:`1px solid ${h.color}18`,flexShrink:0,lineHeight:1,minWidth:70,textAlign:"center"}}>
+                            {h.sim}%
+                          </div>
+                          <div style={{padding:"10px 14px",flex:1}}>
+                            <div style={{fontSize:12,fontWeight:600,color:"var(--ch)",marginBottom:3}}>{h.client} · {h.year}</div>
+                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              <div style={{fontFamily:"var(--mono)",fontSize:8,padding:"1px 6px",color:h.outcome==="SUCCESS"?"#3A6B4A":h.outcome==="PARTIAL"?"#7A5C20":"#8C3A3A",border:`1px solid ${h.outcome==="SUCCESS"?"#3A6B4A30":h.outcome==="PARTIAL"?"#7A5C2030":"#8C3A3A30"}`}}>{h.outcome}</div>
+                              <div style={{fontFamily:"var(--mono)",fontSize:8,color:"var(--mid)"}}>Adoption: {h.adoption}%</div>
+                              <Src type="heritage"/>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{padding:"8px 14px",background:`${h.color}04`,borderTop:`1px solid ${h.color}15`,fontSize:11,color:"var(--ch)",lineHeight:1.55,borderLeft:`2px solid ${h.color}`}}>
+                          <span style={{fontFamily:"var(--mono)",fontSize:7,color:h.color,letterSpacing:"1px",textTransform:"uppercase",marginRight:6}}>Key Lesson</span>
+                          {h.lesson}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* STEP 5 */}
+                {simStep===4&&(
+                  <div>
+                    <div style={{fontSize:12,color:"var(--mid)",marginBottom:14,fontStyle:"italic"}}>
+                      Evidence-backed engagement order — generated entirely from Heritage data
+                    </div>
+                    <div style={{padding:"20px",background:"#3A6B4A08",border:"2px solid #3A6B4A40",marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                        <div>
+                          <div style={{fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",color:"#3A6B4A",marginBottom:4}}>Marcus Webb · CFO</div>
+                          <div style={{fontFamily:"var(--serif)",fontSize:28,color:"#3A6B4A",lineHeight:1.2}}>Engage 4th — not 2nd</div>
+                        </div>
+                        <Src type="heritage"/>
+                      </div>
+                      <div style={{fontSize:13,color:"var(--ch)",lineHeight:1.65,marginBottom:12}}>
+                        Approach after CTO and CEO have signalled support. Coalition presence reduces CFO isolation — objection becomes harder to sustain. Nordic Life (94% match) confirmed this sequence moved an identical CFO from active resistor to coalition member in two weeks.
+                      </div>
+                      <div style={{padding:"10px 12px",background:"var(--wh)",border:"1px solid #3A6B4A20",display:"flex",gap:16,alignItems:"center"}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:"var(--mono)",fontSize:8,color:"var(--mid)",marginBottom:4}}>CONFIDENCE SCORE</div>
+                          <div style={{height:6,background:"var(--lt)",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{width:"87%",height:"100%",background:"#3A6B4A",borderRadius:2,animation:"progressBar 1s ease"}}/>
+                          </div>
+                        </div>
+                        <div style={{fontFamily:"var(--serif)",fontSize:30,color:"#3A6B4A",flexShrink:0}}>87%</div>
+                      </div>
+                      <div style={{fontFamily:"var(--mono)",fontSize:8,color:"var(--mid)",marginTop:6,letterSpacing:"1px"}}>Based on 5 heritage engagements · Nordic Life 94% · Zurich 87% · Tryg 81%</div>
+                    </div>
+                    <div style={{padding:"10px 14px",background:"var(--pale)",border:"1px solid var(--lt)",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}><Src type="sp"/><div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1px",textTransform:"uppercase",color:"var(--mid)"}}>From Senior Partner</div></div>
+                        <div style={{fontSize:11,color:"var(--ch)",lineHeight:1.5}}>Stakeholder identity · incentive context · observed resistance signals</div>
+                      </div>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}><Src type="heritage"/><div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1px",textTransform:"uppercase",color:"var(--mid)"}}>From Heritage System</div></div>
+                        <div style={{fontSize:11,color:"var(--ch)",lineHeight:1.5}}>Archetype · resistance score · match engine · confidence · sequencing</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* NEXT BUTTON — floating, always visible */}
+              <div style={{
+                padding:"12px 20px",
+                background:"var(--pale)",
+                borderTop:"1px solid var(--lt)",
+                display:"flex",justifyContent:"flex-end",
+              }}>
+                <button onClick={nextStep} style={{
+                  background:"#3A6080",color:"#fff",border:"none",
+                  padding:"10px 28px",cursor:"pointer",
+                  fontFamily:"var(--mono)",fontSize:10,letterSpacing:"2px",textTransform:"uppercase",
+                  display:"flex",alignItems:"center",gap:8,
+                }}>
+                  {simStep===4?"See Result →":"Next Step →"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* DONE STATE */}
+          {done&&(
+            <div style={{padding:"20px",background:"var(--pale)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"1.5px",textTransform:"uppercase",color:"#3A6B4A"}}>
+                ✓ All 5 steps complete
+              </div>
+              <button onClick={reset} style={{
+                background:"rgba(184,58,26,0.9)",color:"#fff",
+                border:"none",padding:"8px 20px",cursor:"pointer",
+                fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+                display:"flex",alignItems:"center",gap:6,
+              }}>↺ Start Over</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <style>{`@keyframes progressBar{from{width:0}to{}}`}</style>
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════
+   STRATEGIC CLOSING SCREEN
+══════════════════════════════════ */
+function StrategicScreen({onClose}){
+  const [beat,setBeat]=useState(0);
+
+  const BEATS=[
+    {num:1,tag:"The Architecture",label:"From Feature to Platform"},
+    {num:2,tag:"Built For Implement",label:"Designed Around What You Already Are"},
+    {num:3,tag:"The Business Case",label:"How Value Gets Created and Captured"},
+  ];
+
+  const LAYERS=[
+    {num:"00",label:"Implement DNA",tag:"The Constitution · 10 rules",color:"#3A6080",active:false,
+     note:"Governs every recommendation. The only layer that cannot be switched off."},
+    {num:"01",label:"The Heritage Engine",tag:"29 years of intelligence",color:"#7A5C20",active:false,
+     note:"Fine-tuned SLM on Implement engagement data. Free recall disabled — every output cites Heritage."},
+    {num:"02",label:"The Thinking Layer",tag:"Psychology · Economics · Domain",color:"#5A6B4A",active:false,
+     note:"Inter-discipline conflict detection. When signals contradict, both are shown — never silently resolved."},
+    {num:"03",label:"The Human Layer",tag:"You were just here",color:"#D4896A",active:true,
+     note:"Every persona, every perspective. The Actors Layer simulation lives here. Game-theoretic sequencing engine."},
+    {num:"04",label:"Where Talent Compounds",tag:"Platform sharpens consultants",color:"#6A4A7A",active:false,
+     note:"Hypothesis Engine for JCs. Neural career layers. Win rate tracked over time. Talent compounds, not depreciates."},
+    {num:"05",label:"The Standard of Proof",tag:"Every recommendation pre-challenged",color:"#3A6B4A",active:false,
+     note:"Model A generates. Model B challenges. 6-step Decision Trace. Human override logged permanently."},
+  ];
+
+  const LINKS=[
+    {variable:"A Culture of High Agency",layer:"Where Talent Compounds",num:"04",color:"#6A4A7A",
+     how:"The Hypothesis Engine develops consultant judgment — it doesn't replace it. High-agency consultants compound faster when the scaffolding work is removed. The bench gets stronger with every engagement."},
+    {variable:"Real Outcomes Through Effective Change",layer:"The Standard of Proof",num:"05",color:"#3A6B4A",
+     how:"Every recommendation ships with a full Reasoning Map. Outcomes become provable, not claimed. The outcome data standard — the industry's honest broker — becomes possible."},
+    {variable:"Meaningful Use of Technology",layer:"Heritage Engine + DNA",num:"01",color:"#7A5C20",
+     how:"The technology runs on Implement's behavioral expertise — not generic AI. It was designed around what Implement already is. The fit between culture and system is the moat."},
+  ];
+
+  return(
+    <div>
+
+      {/* BEAT PROGRESS */}
+      <div style={{display:"flex",gap:0,marginBottom:20}}>
+        {BEATS.map((b,i)=>(
+          <div key={i} style={{flex:1,padding:"0 2px"}}>
+            <div style={{
+              height:3,background:i<=beat?"#3A6080":"var(--lt)",
+              transition:"background .3s",cursor:"pointer",
+            }} onClick={()=>setBeat(i)}/>
+            <div style={{
+              fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",
+              textTransform:"uppercase",color:i===beat?"#3A6080":"var(--mid)",
+              marginTop:5,transition:"color .3s",
+            }}>{b.num} · {b.tag}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* BEAT 1 */}
+      {beat===0&&(
+        <div style={{animation:"fadeIn .35s ease"}}>
+          <div style={{
+            fontFamily:"var(--serif)",fontSize:19,color:"var(--ink)",
+            lineHeight:1.4,marginBottom:6,fontStyle:"italic",
+          }}>
+            "What you just saw is one layer.<br/>Here's the system it sits inside."
+          </div>
+          <div style={{fontSize:13,color:"var(--mid)",marginBottom:18,lineHeight:1.6}}>
+            The Human Layer runs on five other layers simultaneously. Each one makes it more reliable. None is optional.
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+            {LAYERS.map((l,i)=>(
+              <div key={i} style={{
+                padding:"12px 14px",
+                border:"1px solid "+(l.active?l.color+"55":"var(--lt)"),
+                background:l.active?l.color+"0A":"var(--pale)",
+                position:"relative",overflow:"hidden",
+              }}>
+                {l.active&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:l.color}}/>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <div style={{
+                      fontFamily:"var(--mono)",fontSize:9,
+                      color:l.active?l.color:"var(--mid)",
+                      flexShrink:0,
+                    }}>{l.num}</div>
+                    <div style={{fontSize:12,fontWeight:600,color:l.active?l.color:"var(--ch)"}}>{l.label}</div>
+                  </div>
+                  {l.active&&(
+                    <div style={{
+                      fontFamily:"var(--mono)",fontSize:7,letterSpacing:"1px",textTransform:"uppercase",
+                      color:l.color,background:l.color+"12",
+                      border:"1px solid "+l.color+"35",padding:"2px 6px",flexShrink:0,marginLeft:6,
+                    }}>You were here</div>
+                  )}
+                </div>
+                <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1px",textTransform:"uppercase",color:l.active?l.color:"var(--mid)",marginBottom:5}}>{l.tag}</div>
+                <div style={{fontSize:10,color:"var(--mid)",lineHeight:1.5}}>{l.note}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            padding:"12px 16px",background:"rgba(58,96,128,0.05)",
+            border:"1px solid rgba(58,96,128,0.15)",
+            fontSize:12,color:"var(--ch)",lineHeight:1.65,marginBottom:16,
+          }}>
+            The Human Layer (03) runs the stakeholder simulation you just saw. Its recommendations are grounded in the Heritage Engine (01), governed by Implement DNA (00), filtered through the Thinking Layer (02), and every output is pre-challenged by the Standard of Proof (05) before it reaches the Senior Partner.
+          </div>
+
+          <div style={{display:"flex",justifyContent:"flex-end"}}>
+            <button onClick={()=>setBeat(1)} style={{
+              background:"#3A6080",color:"#fff",border:"none",
+              padding:"9px 22px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+              display:"flex",alignItems:"center",gap:6,
+            }}>Built For Implement &rarr;</button>
+          </div>
+        </div>
+      )}
+
+      {/* BEAT 2 */}
+      {beat===1&&(
+        <div style={{animation:"fadeIn .35s ease"}}>
+          <div style={{
+            fontFamily:"var(--serif)",fontSize:19,color:"var(--ink)",
+            lineHeight:1.4,marginBottom:6,fontStyle:"italic",
+          }}>
+            "Every layer maps directly to a strength<br/>Implement has spent 29 years building."
+          </div>
+          <div style={{fontSize:13,color:"var(--mid)",marginBottom:18,lineHeight:1.6}}>
+            This wasn't designed as a generic AI product dropped on top of Implement. The fit between the OS architecture and Implement's existing strengths is deliberate — and it's what makes it difficult to replicate.
+          </div>
+
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+            {LINKS.map((l,i)=>(
+              <div key={i} style={{
+                border:"1px solid "+l.color+"28",overflow:"hidden",
+                animation:"fadeIn .4s ease "+(i*0.1)+"s both",
+              }}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+                  <div style={{padding:"14px 16px",background:l.color+"06",borderRight:"1px solid "+l.color+"18"}}>
+                    <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"var(--mid)",marginBottom:4}}>Implement Strength</div>
+                    <div style={{fontSize:12,fontWeight:600,color:"var(--ink)",lineHeight:1.35}}>{l.variable}</div>
+                  </div>
+                  <div style={{padding:"14px 16px",background:l.color+"03"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                      <div style={{fontFamily:"var(--mono)",fontSize:7,padding:"1px 5px",background:l.color+"12",border:"1px solid "+l.color+"30",color:l.color,letterSpacing:"1px",textTransform:"uppercase"}}>Layer {l.num}</div>
+                      <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:l.color}}>{l.layer}</div>
+                    </div>
+                    <div style={{fontSize:12,color:"var(--ch)",lineHeight:1.6}}>{l.how}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{display:"flex",justifyContent:"space-between"}}>
+            <button onClick={()=>setBeat(0)} style={{
+              background:"none",border:"1px solid var(--lt)",
+              padding:"8px 16px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+              color:"var(--mid)",
+            }}>&larr; Back</button>
+            <button onClick={()=>setBeat(2)} style={{
+              background:"#3A6080",color:"#fff",border:"none",
+              padding:"9px 22px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+              display:"flex",alignItems:"center",gap:6,
+            }}>The Business Case &rarr;</button>
+          </div>
+        </div>
+      )}
+
+      {/* BEAT 3 */}
+      {beat===2&&(
+        <div style={{animation:"fadeIn .35s ease"}}>
+          <div style={{
+            fontFamily:"var(--serif)",fontSize:19,color:"var(--ink)",
+            lineHeight:1.4,marginBottom:6,fontStyle:"italic",
+          }}>
+            "This changes how Implement creates value, captures value — and opens a business model that doesn't exist yet in consulting."
+          </div>
+          <div style={{fontSize:13,color:"var(--mid)",marginBottom:16,lineHeight:1.6}}>
+            Three stages. Each one unlocks the next. The third is the one nobody in this industry has done yet.
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 28px 1fr 28px 1fr",alignItems:"stretch",marginBottom:14}}>
+            <div style={{border:"1px solid rgba(58,96,128,0.22)",overflow:"hidden"}}>
+              <div style={{padding:"10px 14px",background:"rgba(58,96,128,0.1)",borderBottom:"1px solid rgba(58,96,128,0.18)"}}>
+                <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"#3A6080"}}>Today</div>
+                <div style={{fontFamily:"var(--serif)",fontSize:15,color:"var(--ink)",marginTop:2}}>Time and Expertise</div>
+              </div>
+              <div style={{padding:"12px 14px"}}>
+                <div style={{fontSize:11,color:"var(--ch)",lineHeight:1.6,marginBottom:8}}>Fees based on hours and seniority. Each engagement starts from scratch.</div>
+                {["Day rate billing","Outcomes claimed, not proven","Relationship-dependent continuity","Each engagement starts fresh"].map((item,i)=>(
+                  <div key={i} style={{fontSize:10,color:"var(--mid)",padding:"3px 0",borderBottom:"1px solid var(--lt)",display:"flex",gap:6}}>
+                    <span style={{color:"#3A6080",flexShrink:0}}>&middot;</span>{item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"var(--mid)"}}>&rarr;</div>
+            <div style={{border:"1px solid rgba(58,107,74,0.28)",overflow:"hidden"}}>
+              <div style={{padding:"10px 14px",background:"rgba(58,107,74,0.09)",borderBottom:"1px solid rgba(58,107,74,0.18)"}}>
+                <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"#3A6B4A"}}>With Transformation OS</div>
+                <div style={{fontFamily:"var(--serif)",fontSize:15,color:"var(--ink)",marginTop:2}}>Outcome-Linked Fees</div>
+              </div>
+              <div style={{padding:"12px 14px"}}>
+                <div style={{fontSize:11,color:"var(--ch)",lineHeight:1.6,marginBottom:8}}>Fees tied to transformation success. Viable because outcomes are now measurable.</div>
+                {["Outcome-linked pricing possible","Heritage Engine proves success","Behavioral profiles compound","Switching costs become structural"].map((item,i)=>(
+                  <div key={i} style={{fontSize:10,color:"var(--ch)",padding:"3px 0",borderBottom:"1px solid var(--lt)",display:"flex",gap:6}}>
+                    <span style={{color:"#3A6B4A",flexShrink:0}}>&#10003;</span>{item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"var(--mid)"}}>&rarr;</div>
+            <div style={{border:"2px solid rgba(140,58,58,0.38)",overflow:"hidden",position:"relative"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#8C3A3A,#D4896A)"}}/>
+              <div style={{padding:"10px 14px",background:"rgba(140,58,58,0.08)",borderBottom:"1px solid rgba(140,58,58,0.18)"}}>
+                <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1.5px",textTransform:"uppercase",color:"#8C3A3A"}}>Future — Servitization</div>
+                <div style={{fontFamily:"var(--serif)",fontSize:15,color:"var(--ink)",marginTop:2}}>OS as a Service</div>
+              </div>
+              <div style={{padding:"12px 14px"}}>
+                <div style={{fontSize:11,color:"var(--ch)",lineHeight:1.6,marginBottom:8}}>The platform becomes the product. Other firms pay to run on Implement's intelligence.</div>
+                {["License Heritage Engine to boutiques","Run inside enterprise AI platforms","Outcome standard as industry infrastructure","Revenue independent of headcount"].map((item,i)=>(
+                  <div key={i} style={{fontSize:10,color:"var(--ch)",padding:"3px 0",borderBottom:"1px solid rgba(140,58,58,0.08)",display:"flex",gap:6}}>
+                    <span style={{color:"#8C3A3A",flexShrink:0}}>&rarr;</span>{item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            padding:"11px 14px",background:"rgba(140,58,58,0.04)",
+            border:"1px solid rgba(140,58,58,0.18)",
+            fontSize:12,color:"var(--ch)",lineHeight:1.65,marginBottom:16,
+          }}>
+            McKinsey doesn't license its knowledge to competitors. Implement would be the first consulting firm to productize its institutional intelligence at platform scale — a category shift, not a product launch.
+          </div>
+
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <button onClick={()=>setBeat(1)} style={{
+              background:"none",border:"1px solid var(--lt)",
+              padding:"8px 16px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+              color:"var(--mid)",
+            }}>&larr; Back</button>
+            <button onClick={onClose} style={{
+              background:"#B83A1A",color:"#fff",border:"none",
+              padding:"10px 22px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+              display:"flex",alignItems:"center",gap:6,
+            }}>Explore the OS &rarr;</button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+
+function OrientationOverlay({onClose}){
+  const [screen,setScreen]=useState(0);
+  const s=ORI_SCREENS[screen];
+  return(
+    <div style={{
+      position:"fixed",inset:0,zIndex:9000,
+      background:"rgba(10,12,14,0.88)",
+      display:"flex",alignItems:"center",justifyContent:"center",
+      padding:24,
+      backdropFilter:"blur(4px)",
+    }} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{
+        background:"var(--wh)",maxWidth:680,width:"100%",
+        maxHeight:"88vh",overflow:"auto",
+        borderRadius:2,position:"relative",
+        boxShadow:"0 24px 80px rgba(0,0,0,.4)",
+      }}>
+        {/* HEADER */}
+        <div style={{
+          background:"var(--dk)",color:"#E8E4DC",
+          padding:"20px 28px 16px",
+          borderBottom:"1px solid rgba(255,255,255,.06)",
+          position:"sticky",top:0,zIndex:10,
+        }}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontFamily:"var(--mono)",fontSize:9,letterSpacing:"2px",textTransform:"uppercase",color:"rgba(232,228,220,.4)",marginBottom:6}}>
+                How Transformation OS Works · {screen+1} of 3
+              </div>
+              <div style={{fontFamily:"var(--serif)",fontSize:screen===1?16:22,fontWeight:400,color:screen===1?"rgba(232,228,220,.6)":"#E8E4DC",lineHeight:1.2}}>{s.title}</div>
+              {screen!==1&&<div style={{fontSize:12,color:"rgba(232,228,220,.55)",marginTop:5,lineHeight:1.5}}>{s.sub}</div>}
+            </div>
+            <button onClick={onClose} style={{
+              background:"none",border:"1px solid rgba(255,255,255,.15)",color:"rgba(232,228,220,.45)",
+              padding:"4px 10px",cursor:"pointer",fontFamily:"var(--mono)",fontSize:10,
+              letterSpacing:"1px",marginLeft:16,flexShrink:0,
+            }}>✕ Close</button>
+          </div>
+          {/* PROGRESS DOTS */}
+          <div style={{display:"flex",gap:6,marginTop:14}}>
+            {ORI_SCREENS.map((_,i)=>(
+              <div key={i} onClick={()=>setScreen(i)} style={{
+                height:2,flex:1,cursor:"pointer",transition:"background .2s",
+                background:i<=screen?"#3A6080":"rgba(255,255,255,.12)",
+              }}/>
+            ))}
+          </div>
+        </div>
+
+        {/* BODY */}
+        <div style={{padding:screen===1?"0":"24px 28px"}}>
+          {/* Screen tag */}
+          {screen!==1&&<div style={{
+            display:"inline-block",fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",
+            textTransform:"uppercase",color:"var(--st)",background:"var(--stp)",
+            border:"1px solid var(--stl)",padding:"3px 9px",marginBottom:18,
+          }}>{s.tag}</div>}
+
+          {/* Screen 1 — problem */}
+          {screen===0&&(
+            <>
+              {s.stat&&(
+                <div style={{
+                  display:"flex",alignItems:"center",gap:16,
+                  padding:"18px 20px",background:s.stat.bg,
+                  border:`1px solid ${s.stat.color}40`,marginBottom:18,
+                }}>
+                  <div style={{fontFamily:"var(--serif)",fontSize:52,color:s.stat.color,lineHeight:1,flexShrink:0}}>{s.stat.val}</div>
+                  <div style={{fontSize:13,color:"var(--ink)",fontWeight:500,lineHeight:1.4}}>{s.stat.label}</div>
+                </div>
+              )}
+              <div style={{fontSize:14,lineHeight:1.75,color:"var(--ch)",marginBottom:18}}>{s.body}</div>
+              <div style={{
+                padding:"12px 16px",borderLeft:"3px solid #3A6080",
+                background:"#EEF3F8",fontSize:13,color:"var(--ch)",lineHeight:1.65,
+              }}>{s.kicker}</div>
+            </>
+          )}
+
+          {/* Screen 2 — how it works */}
+          {screen===1&&(
+            <SimulationScreen/>
+          )}
+
+          {/* Screen 3 — what changes */}
+          {screen===2&&(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0,border:"1px solid var(--lt)",marginBottom:18}}>
+                {s.personas.map((p,i)=>(
+                  <div key={i} style={{
+                    padding:"20px 18px",
+                    borderRight:i===0?"1px solid var(--lt)":"none",
+                  }}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                      <div style={{fontSize:20,color:p.color}}>{p.icon}</div>
+                      <div style={{fontFamily:"var(--mono)",fontSize:10,letterSpacing:"1.5px",textTransform:"uppercase",color:p.color}}>{p.role}</div>
+                    </div>
+                    <div style={{
+                      padding:"10px 12px",background:"#FBF0EE",
+                      borderLeft:"2px solid #8C3A3A",
+                      fontSize:12,color:"var(--ch)",lineHeight:1.6,marginBottom:10,
+                    }}>
+                      <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1px",color:"#8C3A3A",marginBottom:4}}>TODAY</div>
+                      {p.before}
+                    </div>
+                    <div style={{
+                      padding:"10px 12px",background:"#F0F7F0",
+                      borderLeft:`2px solid ${p.color}`,
+                      fontSize:12,color:"var(--ch)",lineHeight:1.6,
+                    }}>
+                      <div style={{fontFamily:"var(--mono)",fontSize:8,letterSpacing:"1px",color:p.color,marginBottom:4}}>WITH TRANSFORMATION OS</div>
+                      {p.after}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                padding:"12px 16px",borderLeft:"3px solid #3A6B4A",
+                background:"#F0F7F0",fontSize:13,color:"var(--ch)",lineHeight:1.65,
+              }}>{s.kicker}</div>
+            </>
+          )}
+        </div>
+
+
+          {/* Screen 4 — strategic position */}
+          {screen===3&&(
+            <StrategicScreen onClose={onClose}/>
+          )}
+
+        {/* FOOTER NAV */}
+        <div style={{
+          padding:"16px 28px",borderTop:"1px solid var(--lt)",
+          display:"flex",justifyContent:"space-between",alignItems:"center",
+          background:"var(--pale)",
+          position:"sticky",bottom:0,
+        }}>
+          <button onClick={()=>screen>0&&setScreen(s=>s-1)} style={{
+            background:"none",border:"1px solid var(--lt)",
+            padding:"7px 16px",cursor:"pointer",
+            fontFamily:"var(--mono)",fontSize:10,letterSpacing:"1px",
+            color:screen===0?"var(--lt)":"var(--ch)",
+            transition:"all .15s",
+          }} disabled={screen===0}>← Previous</button>
+          <div style={{fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1px",color:"var(--mid)"}}>
+            {screen+1} / 4
+          </div>
+          {screen<3?(
+            <button onClick={()=>setScreen(s=>s+1)} style={{
+              background:"var(--dk)",color:"#E8E4DC",
+              border:"none",padding:"8px 20px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:10,letterSpacing:"1.5px",textTransform:"uppercase",
+              transition:"all .15s",
+            }}>Next →</button>
+          ):(
+            <button onClick={onClose} style={{
+              background:"#3A6080",color:"#E8E4DC",
+              border:"none",padding:"8px 20px",cursor:"pointer",
+              fontFamily:"var(--mono)",fontSize:10,letterSpacing:"1.5px",textTransform:"uppercase",
+              transition:"all .15s",
+            }}>Close & Explore the OS →</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Landing({onStart}){
+  const [showOri,setShowOri]=useState(false);
   return(
     <div className="land">
+      {showOri&&<OrientationOverlay onClose={()=>setShowOri(false)}/>}
       <div className="land-eyebrow">Implement Consulting Group</div>
       <div className="land-title">
         <span>Transformation</span>
@@ -847,6 +1683,30 @@ function Landing({onStart}){
       <div className="land-tagline">
         <strong>"To build intelligence fit for clients,</strong><br/>
         you must build it fit for consultants."
+      </div>
+      {/* ORIENTATION BANNER */}
+      <div style={{
+        margin:"0 auto 24px",maxWidth:440,
+        background:"rgba(184,58,26,0.15)",
+        border:"1px solid rgba(184,58,26,0.5)",
+        borderLeft:"3px solid #B83A1A",
+        borderRadius:2,padding:"13px 20px",
+        display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,
+        cursor:"pointer",transition:"all .2s",
+      }}
+        onClick={()=>setShowOri(true)}
+        onMouseEnter={e=>{e.currentTarget.style.background="rgba(184,58,26,0.25)";}}
+        onMouseLeave={e=>{e.currentTarget.style.background="rgba(184,58,26,0.15)";}}
+      >
+        <div>
+          <div style={{fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",color:"#E8917A",marginBottom:4}}>New to Transformation OS?</div>
+          <div style={{fontSize:12,color:"rgba(232,228,220,.75)",lineHeight:1.45}}>See how it works — inputs, outputs, and why it improves change success rates.</div>
+        </div>
+        <div style={{
+          fontFamily:"var(--mono)",fontSize:11,color:"#E8917A",flexShrink:0,
+          padding:"4px 10px",border:"1px solid rgba(184,58,26,0.4)",
+          background:"rgba(184,58,26,0.15)",
+        }}>How it works →</div>
       </div>
       <button className="land-cta" onClick={onStart}>Begin →</button>
       <div className="land-meta">Kotter Engine · Interactive Prototype · v3</div>
@@ -953,14 +1813,29 @@ function F2({onNext,onBack,onExit}){
 ══════════════════════════════════ */
 function RoleSel({onSelect,onBack}){
   const [hov,setHov]=useState(null);
+  const [showOri,setShowOri]=useState(false);
   const spMods=[{n:"Step 1",name:"Heritage Blueprint Match"},{n:"Step 2",name:"Stakeholder Simulation (Game Theory)"},{n:"Step 3",name:"Path Confidence + Resistance Prediction"},{n:"Step 4",name:"Optimal Engagement Sequence"}];
   const jcMods=[{n:"Step 1",name:"Hypothesis Selection"},{n:"Step 2",name:"Debate Arena — AI vs You"},{n:"Step 3",name:"Neuron Reveal + Neural Network"},{n:"Step 4",name:"Heritage Contribution"}];
   return(
     <div style={{position:"relative"}}>
+      {showOri&&<OrientationOverlay onClose={()=>setShowOri(false)}/>}
       <div style={{position:"absolute",top:0,left:0,right:0,height:52,display:"flex",alignItems:"center",padding:"0 24px",zIndex:10,gap:12}}>
         <button className="s-back" style={{color:"rgba(255,255,255,.5)"}} onClick={onBack}>← Back</button>
         <div style={{width:1,height:16,background:"rgba(255,255,255,.2)"}}/>
         <div style={{fontFamily:"var(--serif)",fontSize:15,color:"rgba(255,255,255,.7)"}}>Choose your path</div>
+        {/* HOW IT WORKS PERSISTENT TRIGGER */}
+        <button onClick={e=>{e.stopPropagation();setShowOri(true);}} style={{
+          marginLeft:"auto",
+          background:"rgba(184,58,26,0.2)",
+          border:"1px solid rgba(184,58,26,0.55)",
+          borderLeft:"3px solid #B83A1A",
+          color:"#E8917A",padding:"5px 16px",cursor:"pointer",
+          fontFamily:"var(--mono)",fontSize:9,letterSpacing:"1.5px",textTransform:"uppercase",
+          borderRadius:2,transition:"all .2s",flexShrink:0,
+        }}
+          onMouseEnter={e=>e.currentTarget.style.background="rgba(184,58,26,0.32)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(184,58,26,0.2)"}
+        >How it works →</button>
       </div>
       <div className="role-sel">
         <div className="role-half rsp"
