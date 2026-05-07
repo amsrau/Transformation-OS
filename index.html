@@ -46,7 +46,7 @@ const {useState,useEffect,useRef}=React;
    GLOBAL STYLES
 ══════════════════════════════════ */
 const CSS=`
-.app{min-height:100vh;background:var(--wh);padding-bottom:44px}
+.app{min-height:100vh;background:var(--wh);padding-bottom:80px}
 
 /* ── LANDING ── */
 .land{height:100vh;background:var(--ch);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;text-align:center;position:relative;overflow:hidden}
@@ -842,20 +842,17 @@ function NeuralNet({baseNeurons,newNeurons,animated,compact}){
 const ORI_SCREENS=[
   {
     tag:"The Problem",
-    title:"2 in 3 change programmes fail.",
-    body:"The strategy is rarely wrong. The budget is rarely the issue. What breaks is the coalition — the wrong people in the room, the right people disengaged, the political landscape shifting while the Senior Partner is still running the diagnostic.",
     stat:{val:"2 in 3",label:"Transformations fail. Coalition breakdown is the leading cause."},
+    body:"The strategy is rarely wrong. The budget is rarely the issue. What breaks is the coalition — the wrong people in the room, the right people disengaged, the political landscape shifting while the Senior Partner is still running the diagnostic.",
     kicker:"Your clients are now running two or three transformations simultaneously. Each one that fails lands on your track record. The cost of a broken coalition is higher than it has ever been.",
     aiQ:"Does AI make this better?",
     aiA:"It compounds the problem. More transformations, faster cycles, less tolerance for the six-week lag before the political landscape becomes visible.",
   },
   {
     tag:"Implement's Edge",
-    title:"Implement exists to beat that number. 29 years of doing exactly that.",
   },
   {
-    tag:"The Opportunity",
-    title:"How does Implement turn 29 years of coalition intelligence into a repeatable, compounding advantage?",
+    tag:"The War Room",
   },
   {
     tag:"What This Changes — Senior Partner",
@@ -870,11 +867,6 @@ const ORI_SCREENS=[
     tag:"See It Working — Live Simulation",
     title:"Watch it process a real stakeholder.",
     sub:"Marcus Webb, CFO — illustrative persona. Input goes in. Evidence-backed recommendation comes out.",
-  },
-  {
-    tag:"From Feature to Platform",
-    title:"The system behind what you just saw.",
-    sub:"How this one feature connects to six layers, three strategic strengths, and a business model that doesn't exist yet in consulting.",
   },
 ];
 
@@ -1578,7 +1570,7 @@ function OrientationOverlay({onClose}){
   const [screen,setScreen]=useState(0);
   const s=ORI_SCREENS[screen];
   const isSim=screen===5;
-  const TOTAL=7;
+  const TOTAL=6;
 
   const LBL={
     fontFamily:"var(--mono)",fontSize:11,letterSpacing:"2px",
@@ -1818,59 +1810,77 @@ function OrientationOverlay({onClose}){
             </div>
           )}
 
-          {/* ── SCREEN 2: The Opportunity ── */}
+          {/* ── SCREEN 2: The War Room ── */}
           {screen===2&&(
             <div style={{animation:"fadeIn .3s ease"}}>
+              {/* Scene setter */}
               <div style={{
-                fontFamily:"var(--serif)",fontSize:36,color:"var(--mid)",
-                fontStyle:"italic",lineHeight:1.4,marginBottom:28,maxWidth:700,
+                fontFamily:"var(--mono)",fontSize:11,letterSpacing:"3px",
+                textTransform:"uppercase",color:"var(--mid)",marginBottom:16,
+              }}>The Scenario</div>
+              <div style={{
+                fontFamily:"var(--serif)",fontSize:38,color:"var(--ch)",
+                lineHeight:1.2,marginBottom:28,maxWidth:720,fontWeight:400,
               }}>
-                How does Implement turn 29 years of coalition intelligence
-                into a repeatable, compounding advantage?
+                A Senior Partner is running a €10M transformation.<br/>
+                Six stakeholders. Three of them will<br/>
+                kill the project — and she won't know<br/>
+                which three, or why, until it's too late.
               </div>
 
+              {/* The real problem */}
               <div style={{
-                fontFamily:"var(--serif)",fontSize:28,color:"var(--ch)",
-                fontWeight:600,lineHeight:1.35,marginBottom:28,maxWidth:700,
+                padding:"20px 24px",background:"var(--ch)",
+                borderLeft:"5px solid #8C3A3A",marginBottom:20,maxWidth:720,
               }}>
-                Transformation OS is built for exactly that.
-                One feature of it — already working.
-              </div>
-
-              <div style={{
-                padding:"24px",border:"2px solid var(--lt)",
-                background:"var(--pale)",marginBottom:20,maxWidth:700,
-              }}>
-                <div style={{...LBL,color:"var(--mid)",marginBottom:12}}>
-                  The Stakeholder Coalition Feature
+                <div style={{
+                  fontFamily:"var(--mono)",fontSize:9,letterSpacing:"2px",
+                  textTransform:"uppercase",color:"rgba(255,255,255,.4)",marginBottom:10,
+                }}>The real problem</div>
+                <div style={{
+                  fontSize:16,color:"rgba(255,255,255,.85)",lineHeight:1.8,
+                }}>
+                  The org chart doesn't show who the real resistors are. The stated objection is never the real one. The political landscape — who influences whom, whose identity is threatened, whose incentives are misaligned — is invisible until six weeks in. By then, the window is already closing.
                 </div>
                 <div style={{
-                  fontFamily:"var(--serif)",fontSize:22,color:"var(--ch)",
-                  lineHeight:1.4,marginBottom:12,
+                  marginTop:14,paddingTop:14,
+                  borderTop:"1px solid rgba(255,255,255,.1)",
+                  fontSize:15,color:"rgba(255,255,255,.55)",lineHeight:1.7,fontStyle:"italic",
                 }}>
-                  Built to help Senior Partners and Junior Consultants find
-                  the least-resistance path to coalition buy-in — before
-                  the first meeting.
-                </div>
-                <div style={{
-                  fontSize:16,color:"var(--ch)",lineHeight:1.7,
-                }}>
-                  It takes 29 years of Implement engagement data —
-                  who resisted, why, what moved them — and turns it
-                  into a live recommendation engine. The Senior Partner
-                  walks in with evidence. The Junior Consultant builds
-                  judgment instead of decks. Every engagement that runs
-                  through it makes the next recommendation sharper.
+                  She is flying on instinct and whatever she can remember from the last three engagements. Every Senior Partner starts from scratch. When she retires, that intelligence leaves with her.
                 </div>
               </div>
 
+              {/* The War Room answer */}
               <div style={{
-                padding:"16px 20px",borderLeft:"4px solid #3A6080",
-                background:"#EEF3F8",fontSize:16,color:"var(--ch)",
-                lineHeight:1.65,maxWidth:700,
+                padding:"20px 24px",background:"#EEF3F8",
+                borderLeft:"5px solid #3A6080",marginBottom:16,maxWidth:720,
               }}>
-                The next screens show exactly what changes — for the
-                Senior Partner and the Junior Consultant.
+                <div style={{
+                  fontFamily:"var(--mono)",fontSize:9,letterSpacing:"2px",
+                  textTransform:"uppercase",color:"#3A6080",marginBottom:10,
+                }}>The War Room</div>
+                <div style={{
+                  fontSize:16,color:"var(--ch)",lineHeight:1.8,fontWeight:500,
+                }}>
+                  She gets a War Room. Stakeholder simulation, resistance profiling, engagement sequencing — before she walks into any room. The political map is visible on day one.
+                </div>
+              </div>
+
+              {/* Heritage data thread */}
+              <div style={{
+                padding:"16px 20px",border:"1px solid var(--lt)",
+                background:"var(--pale)",maxWidth:720,
+              }}>
+                <div style={{
+                  fontFamily:"var(--mono)",fontSize:9,letterSpacing:"2px",
+                  textTransform:"uppercase",color:"var(--mid)",marginBottom:8,
+                }}>What powers it</div>
+                <div style={{
+                  fontSize:15,color:"var(--ch)",lineHeight:1.75,
+                }}>
+                  29 years of Implement engagement data. Who resisted. What moved them. What sequencing worked. What collapsed — and why. No competitor can replicate it. No AI can generate it from scratch. Only Implement has it.
+                </div>
               </div>
             </div>
           )}
@@ -1980,15 +1990,12 @@ function OrientationOverlay({onClose}){
           {/* ── SCREEN 5: Simulation ── */}
           {screen===5&&(<SimulationScreen/>)}
 
-          {/* ── SCREEN 6: Platform ── */}
-          {screen===6&&(<StrategicScreen onClose={onClose}/>)}
-
         </div>{/* /CONTENT */}
       </div>{/* /BODY */}
 
       {/* ══ FOOTER ══ */}
       <div style={{
-        padding:"16px 64px 56px",
+        padding:"16px 64px 72px",
         borderTop:"2px solid var(--lt)",
         display:"flex",justifyContent:"space-between",alignItems:"center",
         background:"var(--pale)",
