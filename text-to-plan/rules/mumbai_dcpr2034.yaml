@@ -1,0 +1,109 @@
+# Mumbai — Development Control & Promotion Regulations 2034 (DCPR 2034), MCGM.
+#
+# STATUS: assumed values, tracked in ASSUMPTIONS.md. Every rule group carries
+# `source` and `verified`. `verified: false` means the number has not been checked
+# against the notified DCPR 2034 text and its amendments (MCGM portal). Closing
+# that check is an operational dependency before any plan is shown as compliant.
+#
+# Units: metres, square metres. Plot inputs in feet are converted by the engine.
+
+city: mumbai
+code: DCPR 2034
+version: 0.1.0
+
+# Mumbai has two FSI regimes; the user's location decides which applies.
+zones:
+  island_city:
+    label: Island City (south of Mahim / Sion)
+  suburbs:
+    label: Suburbs and extended suburbs
+
+fsi:
+  # Zonal (basic) FSI for residential use.
+  basic:
+    island_city: 1.33
+    suburbs: 1.0
+  # Premium FSI (paid to MCGM) and TDR (bought on the market) are added on top of
+  # basic FSI and depend on road width. ASSUMED values — see ASSUMPTIONS.md (A1).
+  additional_by_road_width:     # road width (m) upper bound -> extra FSI
+    suburbs:
+      - { road_width_max_m: 9.0,   premium: 0.5, tdr: 0.0 }
+      - { road_width_max_m: 12.0,  premium: 0.5, tdr: 0.5 }
+      - { road_width_max_m: 18.0,  premium: 0.5, tdr: 0.7 }
+      - { road_width_max_m: 27.0,  premium: 0.5, tdr: 0.9 }
+      - { road_width_max_m: 999.0, premium: 0.5, tdr: 1.0 }
+    island_city:
+      - { road_width_max_m: 9.0,   premium: 0.5, tdr: 0.0 }
+      - { road_width_max_m: 999.0, premium: 0.5, tdr: 0.5 }
+  # Built-up area counted against FSI = room (carpet) area x this factor, for walls.
+  wall_allowance_factor: 1.10
+  # The stair is counted once (not per floor) in built-up area.
+  stair_counted_once: true
+  source: DCPR 2034 Reg. 30, Table 12 (zonal, premium, TDR); Reg. 31 (exclusions)
+  verified: false
+
+# Marginal open spaces (setbacks) for a low-rise residential building on a small plot.
+# DCPR ties these to road width and building height; Phase 0 models only the
+# low-rise small-plot case below.
+setbacks:
+  applies_to:
+    max_height_m: 15.0
+    max_plot_area_sqm: 500.0
+  front_by_road_width:          # road width (m) upper bound -> front setback (m)
+    - { road_width_max_m: 12.0, front_m: 3.0 }
+    - { road_width_max_m: 18.0, front_m: 4.5 }
+    - { road_width_max_m: 999.0, front_m: 6.0 }
+  side_m: 1.5
+  rear_m: 1.5
+  source: DCPR 2034 Reg. 41 (marginal open spaces)
+  verified: false
+
+ground_coverage:
+  max_fraction: null            # Not a governing control for this case; setbacks bind first.
+  source: DCPR 2034
+  verified: false
+
+# Minimum internal room standards.
+# Interim figures follow NBC 2016 Part 3 / Model Building Bye-laws, pending a check
+# against DCPR 2034 Reg. 37.
+rooms:
+  habitable:            { min_area_sqm: 9.5, min_width_m: 2.4 }
+  habitable_secondary:  { min_area_sqm: 7.5, min_width_m: 2.1 }   # 2nd+ bedroom, study
+  kitchen:              { min_area_sqm: 4.5, min_width_m: 1.5 }
+  bath:                 { min_area_sqm: 1.8, min_width_m: 1.2 }   # combined bath + WC
+  wc:                   { min_area_sqm: 1.1, min_width_m: 1.0 }
+  pooja:                { min_area_sqm: 1.2, min_width_m: 1.0 }   # not regulated; design minimum
+  lobby:                { min_area_sqm: 2.5, min_width_m: 1.2 }   # upper-floor landing / family area; design minimum
+  source: DCPR 2034 Reg. 37 (to verify); interim NBC 2016 Part 3 / MBBL
+  verified: false
+
+# Internal staircase of a single dwelling (duplex). Modelled as a dog-legged stair:
+# two flights side by side plus a mid landing as deep as the flight is wide.
+stairs:
+  type: dog_leg
+  min_flight_width_m: 0.9
+  max_riser_m: 0.19
+  min_tread_m: 0.25
+  floor_to_floor_m: 3.0
+  source: DCPR 2034 Reg. 37 / NBC 2016 Part 4 (to verify)
+  verified: false
+
+ventilation:
+  # Habitable rooms and kitchens need an opening to external air.
+  # Baths may ventilate through a duct / shaft.
+  exterior_wall_required: [habitable, habitable_secondary, kitchen]
+  min_opening_fraction_of_floor_area: 0.1667
+  source: DCPR 2034 Reg. 37 (to verify)
+  verified: false
+
+design:
+  min_door_width_m: 0.9         # minimum shared-wall length for a door between rooms
+  max_aspect_ratio: 2.0
+  aspect_limited_kinds: [habitable, habitable_secondary, kitchen]
+  # Upper bounds on room size, so large plots leave open space instead of ballooning rooms.
+  # Service rooms: multiple of their minimum. Habitable rooms: absolute cap.
+  max_area_factor: { kitchen: 2.0, bath: 2.0, wc: 2.0, pooja: 2.5, lobby: 2.5, stair: 1.3 }
+  max_area_sqm: { habitable: 22.0, habitable_secondary: 14.0 }
+  # Rooms on each floor must fill this share of their bounding rectangle (the rest is
+  # circulation / shafts), so the built mass stays compact on large plots.
+  min_fill_ratio: 0.85
