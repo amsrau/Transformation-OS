@@ -1,0 +1,78 @@
+# Mumbai — Development Control & Promotion Regulations 2034 (DCPR 2034), MCGM.
+#
+# STATUS: Phase 0 placeholder values. Every rule carries `source` and `verified`.
+# `verified: false` means the number was entered from secondary references /
+# model bye-laws and MUST be checked against the notified DCPR 2034 text and its
+# later amendments (MCGM portal) before any output is shown to a user as compliant.
+#
+# Units: metres, square metres. Plot inputs in feet are converted by the engine.
+
+city: mumbai
+code: DCPR 2034
+version: 0.1.0
+
+# Mumbai has two FSI regimes; the user's location decides which applies.
+zones:
+  island_city:
+    label: Island City (south of Mahim / Sion)
+  suburbs:
+    label: Suburbs and extended suburbs
+
+fsi:
+  # Zonal (basic) FSI for residential use.
+  basic:
+    island_city: 1.33
+    suburbs: 1.0
+  source: DCPR 2034 Reg. 30, Table 12 (zonal FSI)
+  verified: false
+  # Premium FSI and TDR are additive and road-width-linked. Left empty on purpose:
+  # fill from Table 12 once verified; the engine only uses `basic` until then.
+  additional_by_road_width: []
+
+# Marginal open spaces (setbacks) for a low-rise residential building on a small plot.
+# DCPR ties these to road width and building height; Phase 0 models only the
+# low-rise small-plot case below.
+setbacks:
+  applies_to:
+    max_height_m: 15.0
+    max_plot_area_sqm: 500.0
+  front_by_road_width:          # road width (m) upper bound -> front setback (m)
+    - { road_width_max_m: 12.0, front_m: 3.0 }
+    - { road_width_max_m: 18.0, front_m: 4.5 }
+    - { road_width_max_m: 999.0, front_m: 6.0 }
+  side_m: 1.5
+  rear_m: 1.5
+  source: DCPR 2034 Reg. 41 (marginal open spaces)
+  verified: false
+
+ground_coverage:
+  max_fraction: null            # Not a governing control for this case; setbacks bind first.
+  source: DCPR 2034
+  verified: false
+
+# Minimum internal room standards.
+# Interim figures follow NBC 2016 Part 3 / Model Building Bye-laws, pending a check
+# against DCPR 2034 Reg. 37.
+rooms:
+  habitable:            { min_area_sqm: 9.5, min_width_m: 2.4 }
+  habitable_secondary:  { min_area_sqm: 7.5, min_width_m: 2.1 }   # 2nd+ bedroom, study
+  kitchen:              { min_area_sqm: 4.5, min_width_m: 1.5 }
+  bath:                 { min_area_sqm: 1.8, min_width_m: 1.2 }   # combined bath + WC
+  wc:                   { min_area_sqm: 1.1, min_width_m: 1.0 }
+  pooja:                { min_area_sqm: 1.2, min_width_m: 1.0 }   # not regulated; design minimum
+  source: DCPR 2034 Reg. 37 (to verify); interim NBC 2016 Part 3 / MBBL
+  verified: false
+
+ventilation:
+  # Habitable rooms and kitchens need an opening to external air.
+  # Baths may ventilate through a duct / shaft.
+  exterior_wall_required: [habitable, habitable_secondary, kitchen]
+  min_opening_fraction_of_floor_area: 0.1667
+  source: DCPR 2034 Reg. 37 (to verify)
+  verified: false
+
+design:
+  min_door_width_m: 0.9         # minimum shared-wall length for a door between rooms
+  max_aspect_ratio: 2.0         # habitable rooms only
+  # Service rooms are capped so spare area goes to living and bedrooms.
+  max_area_factor: { kitchen: 2.0, bath: 2.0, wc: 2.0, pooja: 2.5 }

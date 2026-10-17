@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 597 780" font-family="Helvetica, Arial, sans-serif" font-size="11">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="70" y="22" font-size="13" font-weight="bold">2BHK · 30×40 ft · Mumbai (suburbs) · vastu light · option 3</text>
+<rect x="70" y="70" width="457.2" height="609.6" fill="#fafafa" stroke="#333" stroke-width="2"/>
+<rect x="145.0" y="145.0" width="307.2" height="384.6" fill="none" stroke="#999" stroke-dasharray="6 4"/>
+<rect x="295.0" y="279.6" width="155.0" height="250.0" fill="#f3ead9" stroke="#222" stroke-width="1.5"/>
+<g><text x="372.5" y="400.6" text-anchor="middle" font-weight="bold">living</text>
+<text x="372.5" y="414.6" text-anchor="middle" fill="#555">3.1×5.0 m · 167 sq ft</text></g>
+<rect x="145.0" y="454.6" width="150.0" height="75.0" fill="#e3eedb" stroke="#222" stroke-width="1.5"/>
+<g><text x="220.0" y="488.1" text-anchor="middle" font-weight="bold">kitchen</text>
+<text x="220.0" y="502.1" text-anchor="middle" fill="#555">3.0×1.5 m · 48 sq ft</text></g>
+<rect x="205.0" y="149.6" width="185.0" height="130.0" fill="#f3ead9" stroke="#222" stroke-width="1.5"/>
+<g><text x="297.5" y="210.6" text-anchor="middle" font-weight="bold">bed1</text>
+<text x="297.5" y="224.6" text-anchor="middle" fill="#555">3.7×2.6 m · 104 sq ft</text></g>
+<rect x="145.0" y="279.6" width="150.0" height="125.0" fill="#efe3cc" stroke="#222" stroke-width="1.5"/>
+<g><text x="220.0" y="338.1" text-anchor="middle" font-weight="bold">bed2</text>
+<text x="220.0" y="352.1" text-anchor="middle" fill="#555">3.0×2.5 m · 81 sq ft</text></g>
+<rect x="145.0" y="149.6" width="60.0" height="130.0" fill="#dce8f2" stroke="#222" stroke-width="1.5"/>
+<g transform="rotate(-90 175.0 214.6)"><text x="175.0" y="210.6" text-anchor="middle" font-weight="bold">bath1</text>
+<text x="175.0" y="224.6" text-anchor="middle" fill="#555">1.2×2.6 m · 34 sq ft</text></g>
+<rect x="390.0" y="149.6" width="60.0" height="130.0" fill="#dce8f2" stroke="#222" stroke-width="1.5"/>
+<g transform="rotate(-90 420.0 214.6)"><text x="420.0" y="210.6" text-anchor="middle" font-weight="bold">bath2</text>
+<text x="420.0" y="224.6" text-anchor="middle" fill="#555">1.2×2.6 m · 34 sq ft</text></g>
+<rect x="145.0" y="404.6" width="150.0" height="50.0" fill="#f6dede" stroke="#222" stroke-width="1.5"/>
+<g><text x="220.0" y="425.6" text-anchor="middle" font-weight="bold">pooja</text>
+<text x="220.0" y="439.6" text-anchor="middle" fill="#555">3.0×1.0 m · 32 sq ft</text></g>
+<rect x="70" y="687.6" width="457.2" height="18" fill="#ddd"/>
+<text x="298.6" y="700.6" text-anchor="middle">ROAD (9 m) · EAST-FACING</text>
+<line x1="548.2" y1="40" x2="576.2" y2="40" stroke="#c00" stroke-width="2.5"/>
+<text x="586.2" y="44" text-anchor="middle" fill="#c00" font-weight="bold">N</text>
+<text x="70" y="769.6" fill="#555">Plot 30×40 ft · setbacks F3/S1.5/R1.5 m · footprint 47.3 sqm · FSI 1 → 2 floor(s) · rules UNVERIFIED</text>
+</svg>
