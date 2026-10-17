@@ -97,6 +97,17 @@ def _duplex_program(spec: PlanSpec) -> list[RoomReq]:
     return rooms
 
 
+def built_up_area(rooms: list[Room], rules: dict) -> float:
+    """Area counted against FSI: each room once (the stair is one room across floors), plus walls."""
+    unique = {r.name: r for r in rooms}.values()
+    return sum(r.area for r in unique) * rules["fsi"]["wall_allowance_factor"]
+
+
+def min_built_up_area(spec: PlanSpec, rules: dict) -> float:
+    """Smallest built-up area the room program can have at minimum room sizes."""
+    return sum(room_standard(rules, r.kind)["min_area_sqm"] for r in program(spec)) * rules["fsi"]["wall_allowance_factor"]
+
+
 def local_axes(facing: str) -> tuple[tuple[int, int], tuple[int, int]]:
     """Compass vectors of local +x and local +y, with the road at the bottom of the drawing."""
     fx, fy = COMPASS[facing]
@@ -125,6 +136,7 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
     exterior_kinds = set(rules["ventilation"]["exterior_wall_required"])
     door = _dm_min(rules["design"]["min_door_width_m"])
     max_aspect = rules["design"]["max_aspect_ratio"]
+    aspect_kinds = set(rules["design"]["aspect_limited_kinds"])
     vastu_w = {"off": 0, "light": 4, "strict": 4}[spec.vastu]
 
     found: list[list[Room]] = []
@@ -142,29 +154,67 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
             m.add(area >= math.ceil(std["min_area_sqm"] * 100 - 1e-9))
             if cap := rules["design"]["max_area_factor"].get(r.kind):
                 m.add(area <= int(cap * std["min_area_sqm"] * 100))
+            if cap := rules["design"]["max_area_sqm"].get(r.kind):
+                m.add(area <= int(cap * 100))
             if r.kind == "stair":
                 along_x = m.new_bool_var(f"{r.name}_along_x")
                 m.add(w >= _dm_min(std["min_length_m"])).only_enforce_if(along_x)
                 m.add(h >= _dm_min(std["min_length_m"])).only_enforce_if(~along_x)
-            if r.kind.startswith("habitable"):
+            if r.kind in aspect_kinds:
                 m.add(2 * w <= int(2 * max_aspect) * h)
                 m.add(2 * h <= int(2 * max_aspect) * w)
-            v[r.name] = dict(x=x, y=y, w=w, h=h, area=area,
+            v[r.name] = dict(x=x, y=y, w=w, h=h, x2=x2, y2=y2, area=area,
                              xi=m.new_interval_var(x, w, x2, f"{r.name}_xi"),
                              yi=m.new_interval_var(y, h, y2, f"{r.name}_yi"))
             if r.front:
                 m.add(y == 0)
-            if r.kind in exterior_kinds:
-                sides = [m.new_bool_var(f"{r.name}_ext{k}") for k in range(4)]
-                m.add(x == 0).only_enforce_if(sides[0])
-                m.add(x + w == W).only_enforce_if(sides[1])
-                m.add(y == 0).only_enforce_if(sides[2])
-                m.add(y + h == D).only_enforce_if(sides[3])
-                m.add_bool_or(sides)
 
         for f in range(spec.floors):
             on_floor = [r.name for r in reqs if f in r.floors]
             m.add_no_overlap_2d([v[k]["xi"] for k in on_floor], [v[k]["yi"] for k in on_floor])
+
+        # Compact built mass: each floor's rooms fill most of their bounding box, and
+        # upper floors sit within the ground floor's box (they need something to stand on).
+        fill_pct = round(rules["design"]["min_fill_ratio"] * 100)
+        boxes = []
+        for f in range(spec.floors):
+            on_floor = [v[r.name] for r in reqs if f in r.floors]
+            bx1, by1 = m.new_int_var(0, W, f"bx1_{f}"), m.new_int_var(0, D, f"by1_{f}")
+            bx2, by2 = m.new_int_var(0, W, f"bx2_{f}"), m.new_int_var(0, D, f"by2_{f}")
+            m.add_min_equality(bx1, [a["x"] for a in on_floor])
+            m.add_min_equality(by1, [a["y"] for a in on_floor])
+            m.add_max_equality(bx2, [a["x2"] for a in on_floor])
+            m.add_max_equality(by2, [a["y2"] for a in on_floor])
+            bw, bh = m.new_int_var(0, W, f"bw_{f}"), m.new_int_var(0, D, f"bh_{f}")
+            m.add(bw == bx2 - bx1)
+            m.add(bh == by2 - by1)
+            box_area = m.new_int_var(0, W * D, f"box_{f}")
+            m.add_multiplication_equality(box_area, [bw, bh])
+            m.add(sum(a["area"] for a in on_floor) * 100 >= fill_pct * box_area)
+            boxes.append((bx1, by1, bx2, by2))
+        for bx1, by1, bx2, by2 in boxes[1:]:
+            m.add(bx1 >= boxes[0][0])
+            m.add(by1 >= boxes[0][1])
+            m.add(bx2 <= boxes[0][2])
+            m.add(by2 <= boxes[0][3])
+        # Light and ventilation: the room has a wall on the outer edge of its floor's built mass.
+        for r in reqs:
+            if r.kind not in exterior_kinds:
+                continue
+            a = v[r.name]
+            for f in r.floors:
+                bx1, by1, bx2, by2 = boxes[f]
+                sides = [m.new_bool_var(f"{r.name}_ext{f}_{k}") for k in range(4)]
+                m.add(a["x"] == bx1).only_enforce_if(sides[0])
+                m.add(a["x2"] == bx2).only_enforce_if(sides[1])
+                m.add(a["y"] == by1).only_enforce_if(sides[2])
+                m.add(a["y2"] == by2).only_enforce_if(sides[3])
+                m.add_bool_or(sides)
+
+        # Built-up area within FSI. Upper floors may stay smaller than the envelope;
+        # whatever is left unbuilt there is open terrace.
+        wall_pct = round(rules["fsi"]["wall_allowance_factor"] * 100)
+        m.add(sum(v[r.name]["area"] for r in reqs) * wall_pct <= int(env.max_bua_sqm * 100 * 100))
 
         for r in reqs:
             for other in r.adjacent_to:
@@ -227,12 +277,13 @@ def _require_shared_wall(m: cp_model.CpModel, a: dict, b: dict, door: int, tag: 
     m.add_bool_or(opts)
 
 
-def to_dict(spec: PlanSpec, env: Envelope, rooms: list[Room]) -> dict:
+def to_dict(spec: PlanSpec, env: Envelope, rooms: list[Room], rules: dict) -> dict:
     """Serialisable plan record: the unit of the synthetic dataset."""
     return {
         "spec": asdict(spec),
         "envelope": {**asdict(env), "w_m": env.w_m, "d_m": env.d_m,
-                     "footprint_sqm": env.footprint_sqm, "floors_by_fsi": env.floors_by_fsi},
+                     "footprint_sqm": env.footprint_sqm, "max_bua_sqm": env.max_bua_sqm},
+        "built_up_area_sqm": round(built_up_area(rooms, rules), 2),
         "rooms": [{**asdict(r), "area_sqm": round(r.area, 2)} for r in rooms],
         "adjacency": [[r.name, o] for r in program(spec) for o in r.adjacent_to],
     }

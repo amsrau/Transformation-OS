@@ -19,6 +19,7 @@ class Envelope:
     side_m: float
     rear_m: float
     fsi: float
+    fsi_tier: str = "basic"  # one of FSI_TIERS
 
     @property
     def w_m(self) -> float:
@@ -40,9 +41,6 @@ class Envelope:
     def max_bua_sqm(self) -> float:
         return self.plot_area_sqm * self.fsi
 
-    @property
-    def floors_by_fsi(self) -> int:
-        return int(self.max_bua_sqm // self.footprint_sqm) if self.footprint_sqm > 0 else 0
 
 
 def load_rules(city: str) -> dict:
@@ -54,14 +52,30 @@ def unverified_rules(rules: dict) -> list[str]:
     return [k for k, v in rules.items() if isinstance(v, dict) and v.get("verified") is False]
 
 
-def envelope(rules: dict, plot_w_ft: float, plot_d_ft: float, zone: str, road_width_m: float) -> Envelope:
+FSI_TIERS = ("basic", "premium", "premium+tdr")
+
+
+def fsi_for_tier(rules: dict, zone: str, road_width_m: float, tier: str) -> float:
+    """Total FSI when the owner uses basic FSI only, or also buys premium FSI, or premium FSI and TDR."""
+    fsi = rules["fsi"]["basic"][zone]
+    extra = next(r for r in rules["fsi"]["additional_by_road_width"][zone] if road_width_m <= r["road_width_max_m"])
+    if tier in ("premium", "premium+tdr"):
+        fsi += extra["premium"]
+    if tier == "premium+tdr":
+        fsi += extra["tdr"]
+    return round(fsi, 2)
+
+
+def envelope(rules: dict, plot_w_ft: float, plot_d_ft: float, zone: str, road_width_m: float,
+             fsi_tier: str = "basic") -> Envelope:
     plot_w, plot_d = plot_w_ft * FT, plot_d_ft * FT
     sb = rules["setbacks"]
     limit = sb["applies_to"]["max_plot_area_sqm"]
     if plot_w * plot_d > limit:
         raise ValueError(f"plot {plot_w * plot_d:.0f} sqm exceeds the small-plot case ({limit} sqm) modelled so far")
     front = next(r["front_m"] for r in sb["front_by_road_width"] if road_width_m <= r["road_width_max_m"])
-    env = Envelope(plot_w, plot_d, front, sb["side_m"], sb["rear_m"], rules["fsi"]["basic"][zone])
+    env = Envelope(plot_w, plot_d, front, sb["side_m"], sb["rear_m"],
+                   fsi_for_tier(rules, zone, road_width_m, fsi_tier), fsi_tier)
     if env.w_m <= 0 or env.d_m <= 0:
         raise ValueError("setbacks leave no buildable area on this plot")
     return env

@@ -11,19 +11,28 @@ import random
 import sys
 from pathlib import Path
 
-from .generator import generate, program, to_dict
+from .generator import built_up_area, generate, min_built_up_area, program, to_dict
 from .render import render_svg
-from .rules import envelope, load_rules, unverified_rules
+from .rules import FSI_TIERS, Envelope, envelope, load_rules, unverified_rules
 from .spec import FACINGS, PlanSpec, parse
 from .validate import validate
 
 
+def choose_envelope(spec: PlanSpec, rules: dict) -> Envelope:
+    """Envelope at the requested FSI tier, or with `auto` the cheapest tier the room program fits in."""
+    need = min_built_up_area(spec, rules)
+    tiers = FSI_TIERS if spec.fsi == "auto" else (spec.fsi,)
+    for tier in tiers:
+        env = envelope(rules, spec.plot_w_ft, spec.plot_d_ft, spec.zone, spec.road_width_m, tier)
+        if need <= env.max_bua_sqm:
+            return env
+    raise ValueError(f"the {spec.bhk}BHK program needs at least {need:.1f} sqm built-up; "
+                     f"FSI {env.fsi:g} ({env.fsi_tier}) allows {env.max_bua_sqm:.1f} sqm on this plot")
+
+
 def run_spec(spec: PlanSpec, n: int, out: Path, seed: int, prefix: str = "plan") -> int:
     rules = load_rules(spec.city)
-    env = envelope(rules, spec.plot_w_ft, spec.plot_d_ft, spec.zone, spec.road_width_m)
-    if spec.floors > env.floors_by_fsi:
-        raise ValueError(f"{spec.floors} floors need FSI {spec.floors * env.footprint_sqm / env.plot_area_sqm:.2f}; "
-                         f"basic FSI here is {env.fsi:g} (premium FSI / TDR not modelled yet)")
+    env = choose_envelope(spec, rules)
     out.mkdir(parents=True, exist_ok=True)
     plans = generate(spec, env, rules, n=n, seed=seed)
     if not plans:
@@ -36,11 +45,11 @@ def run_spec(spec: PlanSpec, n: int, out: Path, seed: int, prefix: str = "plan")
             print(f"  rejected {prefix}_{i}: {'; '.join(errors)}", file=sys.stderr)
             continue
         kept += 1
-        record = to_dict(spec, env, rooms)
+        record = to_dict(spec, env, rooms, rules)
         (out / f"{prefix}_{i}.json").write_text(json.dumps(record, indent=2))
         storeys = " duplex" if spec.floors == 2 else ""
         title = f"{spec.bhk}BHK{storeys} · {spec.plot_w_ft:g}×{spec.plot_d_ft:g} ft · Mumbai ({spec.zone}) · vastu {spec.vastu} · option {i}"
-        (out / f"{prefix}_{i}.svg").write_text(render_svg(spec, env, rooms, title))
+        (out / f"{prefix}_{i}.svg").write_text(render_svg(spec, env, rooms, title, built_up_area(rooms, rules)))
     return kept
 
 
@@ -61,7 +70,7 @@ def main(argv: list[str] | None = None) -> None:
 
     rules = load_rules("mumbai")
     if unverified := unverified_rules(rules):
-        print(f"WARNING: unverified rule groups: {', '.join(unverified)}", file=sys.stderr)
+        print(f"WARNING: running on assumed rule values ({', '.join(unverified)}); see ASSUMPTIONS.md", file=sys.stderr)
 
     if a.cmd == "plan":
         spec = parse(a.prompt)

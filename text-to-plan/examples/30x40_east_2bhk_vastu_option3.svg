@@ -28,5 +28,5 @@
 <text x="298.6" y="700.6" text-anchor="middle">ROAD (9 m) · EAST-FACING</text>
 <line x1="548.2" y1="40" x2="576.2" y2="40" stroke="#c00" stroke-width="2.5"/>
 <text x="586.2" y="44" text-anchor="middle" fill="#c00" font-weight="bold">N</text>
-<text x="70" y="769.6" fill="#555">Plot 30×40 ft · setbacks F3/S1.5/R1.5 m · footprint 47.3 sqm/floor · FSI 1 → max 2 floor(s) · rules UNVERIFIED</text>
+<text x="70" y="769.6" fill="#555">Plot 30×40 ft · setbacks F3/S1.5/R1.5 m · footprint 47.3 sqm/floor · FSI 1 (basic) → max BUA 111.5 sqm, plan 51.0 sqm · ASSUMED RULES</text>
 </svg>

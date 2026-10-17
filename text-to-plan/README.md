@@ -17,17 +17,16 @@ rules/mumbai_dcpr2034.yaml ─▶ rules.envelope  (setbacks, FSI → buildable f
                  render.render_svg + to_dict  (SVG drawing + JSON record = one synthetic dataset row)
 ```
 
-## ⚠️ The rules are unverified
+## ⚠️ The engine runs on assumed rule values
 
-Every rule group in `rules/mumbai_dcpr2034.yaml` has a `source` and a
-`verified: false` flag:
+The engine runs on assumed rule values. Every number and its source is listed in
+**[ASSUMPTIONS.md](ASSUMPTIONS.md)**. Verifying them against DCPR 2034 is an
+operational dependency to close before launch.
 
-- The FSI and setback figures came from secondary references.
-- The room minimums are interim figures from NBC 2016 and the Model Building Bye-laws.
-
-Check each group against the notified DCPR 2034 text and its amendments on the
-MCGM portal, then set `verified: true`. Until then the CLI prints a warning,
-and every drawing is stamped "rules UNVERIFIED".
+Until then:
+- each rule group in `rules/mumbai_dcpr2034.yaml` carries `verified: false`
+- the CLI prints a warning
+- every drawing is stamped "ASSUMED RULES"
 
 ## Run
 
@@ -55,6 +54,7 @@ Example output is in `examples/`. Each plan takes up to about 10 s to solve.
 | Island City place names (Dadar, Worli, Colaba…) | `island_city` FSI zone; otherwise `suburbs` |
 | `vastu` / `strict vastu` | Vastu preference strength (`light` / `strict`); `off` by default |
 | `pooja` | adds a pooja room |
+| `premium fsi` / `TDR` / `basic fsi` | FSI tier; `auto` by default (the cheapest tier the plan fits in) |
 
 The regex parser defines the `PlanSpec` contract. An LLM parser can replace it
 later, as long as it produces the same `PlanSpec` fields.
@@ -77,16 +77,40 @@ onto the lobby. Its size comes from the stair rules:
 - So the stair needs at least **1.8 × 2.65 m**.
 - Vastu, when on, keeps the stair out of the north-east.
 
-**The FSI limit is checked before solving.** With only basic FSI, a suburban
-plot often can't take two full floors. For example, 40×60 ft on a 15 m road
-needs FSI 1.01 against an allowed 1.0. The tool refuses these with that
-explanation. Allowing more needs premium FSI and TDR, which aren't modelled yet.
+## How the FSI limit is applied
+
+FSI caps the **built-up area**: total room area × 1.10 for walls, with the stair
+counted once. The solver keeps every plan under the cap. That means an upper
+floor can be smaller than the ground floor, and whatever isn't built there is
+open terrace.
+
+There are three tiers, each adding to the one before:
+
+- **basic**
+- **premium:** extra FSI bought from MCGM
+- **premium+tdr:** also adds TDR bought on the market
+
+With `auto` (the default), the tool uses the cheapest tier that the minimum room
+sizes fit in. If even the top tier doesn't fit, it refuses the request and says
+how much area the plan needs against how much is allowed.
+
+The JSON record and the drawing footer show the tier used, the allowed built-up
+area and the plan's built-up area.
+
+## Layout quality on large plots
+
+- **Maximum room sizes:** living room and master bedroom 22 m², other bedrooms 14 m².
+- **Compact floors:** rooms must fill at least 85% of the rectangle around each floor's rooms.
+- **Light and air:** a room only needs to face the open edge of its own floor's built mass, not the edge of the whole buildable area.
+- **Stacking:** the upper floor stays over the ground floor.
+
+So a large plot gets a compact house with open space around it, not huge rooms.
 
 **The validator also checks:**
 - overlaps on each floor separately
 - the stair's width and length
 - that the stair is in the same position on every floor
-- the FSI floor count
+- that built-up area is within FSI
 - that every required pair of rooms shares a wall of at least 0.9 m for a door
 
 ## How Vastu is applied
@@ -103,8 +127,8 @@ explanation. Allowing more needs premium FSI and TDR, which aren't modelled yet.
 
 ## Known gaps, in order of value
 
-1. Verify the DCPR 2034 numbers. Then add premium FSI and TDR, which depend on road width (Table 12 of the regulations).
-2. Upper floors smaller than the ground floor, plus balconies and terraces. Today both floors fill the same footprint, which is why FSI often rules out a duplex.
+1. Close the assumptions in [ASSUMPTIONS.md](ASSUMPTIONS.md). This is an operational dependency, not code.
+2. Balconies and FSI exclusions (Reg. 31), plus a marked-up terrace on the upper floor.
 3. Doors and windows are drawn only as shared walls of at least 0.9 m. Window placement for the ventilation ratio isn't modelled yet.
 4. Corridors and dining rooms. Today every room opens off the living room or the lobby.
 5. Other stair types (straight, L-shaped) and stair-specific Vastu rules.

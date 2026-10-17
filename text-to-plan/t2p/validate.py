@@ -5,7 +5,7 @@ Deliberately separate from the generator: anything that produces plans
 """
 from __future__ import annotations
 
-from .generator import Room
+from .generator import Room, built_up_area
 from .rules import Envelope, room_standard
 
 EPS = 1e-6
@@ -27,7 +27,7 @@ def validate(rooms: list[Room], env: Envelope, rules: dict,
             errors.append(f"{r.name}: width {min(r.w, r.h):.2f} m < minimum {std['min_width_m']} m")
         if "min_length_m" in std and max(r.w, r.h) + EPS < std["min_length_m"]:
             errors.append(f"{r.name}: length {max(r.w, r.h):.2f} m < minimum {std['min_length_m']} m")
-        if r.kind in exterior_kinds and not _on_boundary(r, env):
+        if r.kind in exterior_kinds and not _on_boundary(r, [o for o in rooms if o.floor == r.floor]):
             errors.append(f"{r.name}: no exterior wall for light and ventilation")
     for i, a in enumerate(rooms):
         for b in rooms[i + 1:]:
@@ -43,8 +43,9 @@ def validate(rooms: list[Room], env: Envelope, rules: dict,
         total = sum(r.area for r in rooms if r.floor == f)
         if total > env.footprint_sqm + EPS:
             errors.append(f"floor {f}: room area {total:.1f} sqm exceeds footprint {env.footprint_sqm:.1f} sqm")
-    if floors > env.floors_by_fsi:
-        errors.append(f"{floors} floors exceed the {env.floors_by_fsi} the FSI of {env.fsi:g} allows on this footprint")
+    bua = built_up_area(rooms, rules)
+    if bua > env.max_bua_sqm + EPS:
+        errors.append(f"built-up area {bua:.1f} sqm exceeds {env.max_bua_sqm:.1f} sqm allowed at FSI {env.fsi:g} ({env.fsi_tier})")
     if floors > 1:
         stairs = [r for r in rooms if r.kind == "stair"]
         if sorted(r.floor for r in stairs) != list(range(floors)):
@@ -54,11 +55,13 @@ def validate(rooms: list[Room], env: Envelope, rules: dict,
     return list(dict.fromkeys(errors))
 
 
-def _on_boundary(r: Room, env: Envelope) -> bool:
-    # Tolerance of one 10 cm grid cell: the envelope edge is rarely on the grid.
-    tol = 0.1
-    return (abs(r.x) < tol or abs(r.y) < tol
-            or abs(r.x + r.w - env.w_m) < tol or abs(r.y + r.h - env.d_m) < tol)
+def _on_boundary(r: Room, floor_rooms: list[Room]) -> bool:
+    """True if r lies on the outer edge of its floor's built mass (bounding box)."""
+    tol = 1e-3
+    return (abs(r.x - min(o.x for o in floor_rooms)) < tol
+            or abs(r.y - min(o.y for o in floor_rooms)) < tol
+            or abs(r.x + r.w - max(o.x + o.w for o in floor_rooms)) < tol
+            or abs(r.y + r.h - max(o.y + o.h for o in floor_rooms)) < tol)
 
 
 def _overlap(a: Room, b: Room) -> bool:

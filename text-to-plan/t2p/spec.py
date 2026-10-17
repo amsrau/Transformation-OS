@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 FACINGS = ("north", "east", "south", "west")
 VASTU_LEVELS = ("off", "light", "strict")
+FSI_CHOICES = ("auto", "basic", "premium", "premium+tdr")
 
 
 @dataclass
@@ -23,6 +24,7 @@ class PlanSpec:
     zone: str = "suburbs"
     road_width_m: float = 9.0
     vastu: str = "off"
+    fsi: str = "auto"               # auto = cheapest tier the plan fits in
     pooja: bool = False
     city: str = "mumbai"
     notes: list[str] = field(default_factory=list)
@@ -38,6 +40,8 @@ class PlanSpec:
             raise ValueError("floors must be 1 or 2")
         if self.floors == 2 and self.bhk < 2:
             raise ValueError("a duplex needs at least 2 bedrooms")
+        if self.fsi not in FSI_CHOICES:
+            raise ValueError(f"fsi must be one of {FSI_CHOICES}")
 
 
 ISLAND_CITY_HINTS = ("island city", "south mumbai", "colaba", "dadar", "worli", "parel", "byculla", "girgaon", "matunga")
@@ -56,6 +60,12 @@ def parse(text: str) -> PlanSpec:
         spec.road_width_m = float(m[1])
     if re.search(r"duplex|g\s*\+\s*1|\b(?:two|2)[\s-]*(?:storey|story|floor)", t):
         spec.floors = 2
+    if "tdr" in t:
+        spec.fsi = "premium+tdr"
+    elif "premium fsi" in t:
+        spec.fsi = "premium"
+    elif "basic fsi" in t or "no premium" in t:
+        spec.fsi = "basic"
     if any(h in t for h in ISLAND_CITY_HINTS):
         spec.zone = "island_city"
     if "strict vastu" in t or "vastu compliant" in t:

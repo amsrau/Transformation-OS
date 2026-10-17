@@ -17,7 +17,7 @@ SQFT = 10.7639
 TREAD_M = 0.25
 
 
-def render_svg(spec: PlanSpec, env: Envelope, rooms: list[Room], title: str = "") -> str:
+def render_svg(spec: PlanSpec, env: Envelope, rooms: list[Room], title: str = "", bua_sqm: float | None = None) -> str:
     floors = max(r.floor for r in rooms) + 1
     pw, pd = env.plot_w_m * SCALE, env.plot_d_m * SCALE
     panel = pw + PAD
@@ -45,7 +45,9 @@ def render_svg(spec: PlanSpec, env: Envelope, rooms: list[Room], title: str = ""
     foot = vh - 10
     out.append(f'<text x="{PAD}" y="{foot}" fill="#555">Plot {spec.plot_w_ft:g}×{spec.plot_d_ft:g} ft · '
                f'setbacks F{env.front_m:g}/S{env.side_m:g}/R{env.rear_m:g} m · footprint {env.footprint_sqm:.1f} sqm/floor · '
-               f'FSI {env.fsi:g} → max {env.floors_by_fsi} floor(s) · rules UNVERIFIED</text>')
+               f'FSI {env.fsi:g} ({env.fsi_tier}) → max BUA {env.max_bua_sqm:.1f} sqm'
+               + (f', plan {bua_sqm:.1f} sqm' if bua_sqm is not None else '')
+               + ' · ASSUMED RULES</text>')
     out.append("</svg>")
     return "\n".join(out)
 

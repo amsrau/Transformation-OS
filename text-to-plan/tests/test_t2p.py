@@ -24,7 +24,7 @@ def test_envelope_30x40_suburbs():
     assert env.w_m == pytest.approx(9.144 - 3.0)
     assert env.d_m == pytest.approx(12.192 - 4.5)
     assert env.fsi == 1.0
-    assert env.floors_by_fsi == 2
+    assert env.max_bua_sqm == pytest.approx(9.144 * 12.192)
 
 
 def test_wider_road_increases_front_setback():
@@ -117,8 +117,48 @@ def test_validator_catches_duplex_breaches():
     assert "living overlaps" not in errors                   # same footprint, different floors is fine
 
 
-def test_validator_rejects_floors_beyond_fsi():
+def test_validator_rejects_built_up_area_beyond_fsi():
     env = envelope(RULES, 30, 40, "suburbs", 9.0)
-    low_fsi = type(env)(**{**env.__dict__, "fsi": 0.5})
+    low_fsi = type(env)(**{**env.__dict__, "fsi": 0.1})
     rooms = [Room("living", "habitable", 0, 0, 3.0, 4.0, floor=0), Room("bed1", "habitable", 0, 0, 3.0, 4.0, floor=1)]
-    assert any("exceed" in e for e in validate(rooms, low_fsi, RULES))
+    assert any("built-up area" in e for e in validate(rooms, low_fsi, RULES))
+
+
+# --- FSI tiers / built-up area ----------------------------------------------
+
+def test_fsi_tiers_add_up():
+    from t2p.rules import fsi_for_tier
+    assert fsi_for_tier(RULES, "suburbs", 15.0, "basic") == 1.0
+    assert fsi_for_tier(RULES, "suburbs", 15.0, "premium") == 1.5
+    assert fsi_for_tier(RULES, "suburbs", 15.0, "premium+tdr") == 2.2
+    assert fsi_for_tier(RULES, "suburbs", 6.0, "premium+tdr") == 1.5   # no TDR on roads under 9 m
+
+
+def test_parse_fsi_choice():
+    assert parse("3bhk duplex").fsi == "auto"
+    assert parse("3bhk duplex with premium fsi").fsi == "premium"
+    assert parse("3bhk duplex using TDR").fsi == "premium+tdr"
+    assert parse("3bhk, basic fsi only").fsi == "basic"
+
+
+def test_auto_tier_picks_cheapest_that_fits():
+    from t2p.cli import choose_envelope
+    assert choose_envelope(parse("40x60 3bhk duplex on 15 m road"), RULES).fsi_tier == "basic"
+    small = parse("20x30 4bhk duplex on 15 m road")
+    tier = choose_envelope(small, RULES).fsi_tier
+    assert tier in ("premium", "premium+tdr")
+    with pytest.raises(ValueError, match="needs at least"):
+        choose_envelope(parse("20x30 4bhk duplex on 15 m road, basic fsi"), RULES)
+
+
+def test_large_plot_duplex_is_compact_and_within_fsi():
+    from t2p.cli import choose_envelope
+    from t2p.generator import built_up_area
+    spec = parse("40x60 north facing 3BHK duplex on 15 m road")
+    env = choose_envelope(spec, RULES)
+    plans = generate(spec, env, RULES, n=1, time_limit_s=5)
+    assert plans
+    adjacency = [(r.name, o) for r in program(spec) for o in r.adjacent_to]
+    assert validate(plans[0], env, RULES, adjacency) == []
+    assert built_up_area(plans[0], RULES) <= env.max_bua_sqm
+    assert all(r.area <= 22.0 + 1e-6 for r in plans[0] if r.kind == "habitable")

@@ -1,0 +1,194 @@
+{
+  "spec": {
+    "plot_w_ft": 40.0,
+    "plot_d_ft": 60.0,
+    "facing": "north",
+    "bhk": 3,
+    "floors": 2,
+    "zone": "suburbs",
+    "road_width_m": 15.0,
+    "vastu": "light",
+    "fsi": "auto",
+    "pooja": true,
+    "city": "mumbai",
+    "notes": []
+  },
+  "envelope": {
+    "plot_w_m": 12.192,
+    "plot_d_m": 18.288,
+    "front_m": 4.5,
+    "side_m": 1.5,
+    "rear_m": 1.5,
+    "fsi": 1.0,
+    "fsi_tier": "basic",
+    "w_m": 9.192,
+    "d_m": 12.288,
+    "footprint_sqm": 112.951296,
+    "max_bua_sqm": 222.967296
+  },
+  "built_up_area_sqm": 117.23,
+  "rooms": [
+    {
+      "name": "living",
+      "kind": "habitable",
+      "x": 5.5,
+      "y": 0.0,
+      "w": 3.3000000000000003,
+      "h": 6.6000000000000005,
+      "floor": 0,
+      "area_sqm": 21.78
+    },
+    {
+      "name": "kitchen",
+      "kind": "kitchen",
+      "x": 2.4000000000000004,
+      "y": 5.7,
+      "w": 3.1,
+      "h": 2.9000000000000004,
+      "floor": 0,
+      "area_sqm": 8.99
+    },
+    {
+      "name": "stair",
+      "kind": "stair",
+      "x": 6.1000000000000005,
+      "y": 6.6000000000000005,
+      "w": 1.8,
+      "h": 3.4000000000000004,
+      "floor": 0,
+      "area_sqm": 6.12
+    },
+    {
+      "name": "stair",
+      "kind": "stair",
+      "x": 6.1000000000000005,
+      "y": 6.6000000000000005,
+      "w": 1.8,
+      "h": 3.4000000000000004,
+      "floor": 1,
+      "area_sqm": 6.12
+    },
+    {
+      "name": "bath2",
+      "kind": "bath",
+      "x": 7.9,
+      "y": 6.6000000000000005,
+      "w": 1.2000000000000002,
+      "h": 3.0,
+      "floor": 0,
+      "area_sqm": 3.6
+    },
+    {
+      "name": "bed3",
+      "kind": "habitable_secondary",
+      "x": 2.4000000000000004,
+      "y": 1.0,
+      "w": 3.1,
+      "h": 4.5,
+      "floor": 0,
+      "area_sqm": 13.95
+    },
+    {
+      "name": "pooja",
+      "kind": "pooja",
+      "x": 2.5,
+      "y": 0.0,
+      "w": 3.0,
+      "h": 1.0,
+      "floor": 0,
+      "area_sqm": 3.0
+    },
+    {
+      "name": "lobby",
+      "kind": "lobby",
+      "x": 6.0,
+      "y": 4.6000000000000005,
+      "w": 3.1,
+      "h": 2.0,
+      "floor": 1,
+      "area_sqm": 6.2
+    },
+    {
+      "name": "bed1",
+      "kind": "habitable",
+      "x": 2.7,
+      "y": 1.9000000000000001,
+      "w": 3.3000000000000003,
+      "h": 6.6000000000000005,
+      "floor": 1,
+      "area_sqm": 21.78
+    },
+    {
+      "name": "bath1",
+      "kind": "bath",
+      "x": 3.7,
+      "y": 8.5,
+      "w": 2.4000000000000004,
+      "h": 1.5,
+      "floor": 1,
+      "area_sqm": 3.6
+    },
+    {
+      "name": "bed2",
+      "kind": "habitable_secondary",
+      "x": 6.0,
+      "y": 0.1,
+      "w": 3.1,
+      "h": 4.5,
+      "floor": 1,
+      "area_sqm": 13.95
+    },
+    {
+      "name": "bath3",
+      "kind": "bath",
+      "x": 7.9,
+      "y": 6.6000000000000005,
+      "w": 1.2000000000000002,
+      "h": 3.0,
+      "floor": 1,
+      "area_sqm": 3.6
+    }
+  ],
+  "adjacency": [
+    [
+      "kitchen",
+      "living"
+    ],
+    [
+      "stair",
+      "living"
+    ],
+    [
+      "bath2",
+      "living"
+    ],
+    [
+      "bed3",
+      "living"
+    ],
+    [
+      "pooja",
+      "living"
+    ],
+    [
+      "lobby",
+      "stair"
+    ],
+    [
+      "bed1",
+      "lobby"
+    ],
+    [
+      "bath1",
+      "bed1"
+    ],
+    [
+      "bed2",
+      "lobby"
+    ],
+    [
+      "bath3",
+      "lobby"
+    ]
+  ]
+}

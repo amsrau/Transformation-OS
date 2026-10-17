@@ -8,6 +8,7 @@
     "zone": "suburbs",
     "road_width_m": 9.0,
     "vastu": "light",
+    "fsi": "auto",
     "pooja": true,
     "city": "mumbai",
     "notes": []
@@ -19,11 +20,13 @@
     "side_m": 1.5,
     "rear_m": 1.5,
     "fsi": 1.0,
+    "fsi_tier": "basic",
     "w_m": 6.144,
     "d_m": 7.692,
     "footprint_sqm": 47.259648,
-    "floors_by_fsi": 2
+    "max_bua_sqm": 111.483648
   },
+  "built_up_area_sqm": 51.0,
   "rooms": [
     {
       "name": "living",
@@ -41,19 +44,19 @@
       "x": 0.0,
       "y": 0.0,
       "w": 1.5,
-      "h": 4.0,
+      "h": 3.0,
       "floor": 0,
-      "area_sqm": 6.0
+      "area_sqm": 4.5
     },
     {
       "name": "bed1",
       "kind": "habitable",
-      "x": 1.5,
+      "x": 0.0,
       "y": 5.0,
-      "w": 4.6000000000000005,
+      "w": 4.800000000000001,
       "h": 2.6,
       "floor": 0,
-      "area_sqm": 11.96
+      "area_sqm": 12.48
     },
     {
       "name": "bed2",
@@ -68,22 +71,22 @@
     {
       "name": "bath1",
       "kind": "bath",
-      "x": 0.0,
-      "y": 6.4,
-      "w": 1.5,
-      "h": 1.2000000000000002,
+      "x": 4.800000000000001,
+      "y": 5.0,
+      "w": 1.3,
+      "h": 2.6,
       "floor": 0,
-      "area_sqm": 1.8
+      "area_sqm": 3.38
     },
     {
       "name": "bath2",
       "kind": "bath",
       "x": 0.0,
-      "y": 4.0,
+      "y": 3.0,
       "w": 1.5,
-      "h": 2.4000000000000004,
+      "h": 2.0,
       "floor": 0,
-      "area_sqm": 3.6
+      "area_sqm": 3.0
     },
     {
       "name": "pooja",
