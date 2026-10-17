@@ -50,6 +50,7 @@ Example output is in `examples/`. Each plan takes up to about 10 s to solve.
 | `30x40`, `40×60` | plot width × depth in ft (width = road frontage) |
 | `east facing` | which side the road is on |
 | `2BHK` | 1–4 bedrooms; sets the room list (`generator.program`) |
+| `duplex`, `G+1`, `two-storey` | 2 floors with an internal stair (needs 2BHK or more) |
 | `12 m road` | road width, which sets the front setback |
 | Island City place names (Dadar, Worli, Colaba…) | `island_city` FSI zone; otherwise `suburbs` |
 | `vastu` / `strict vastu` | Vastu preference strength (`light` / `strict`); `off` by default |
@@ -57,6 +58,36 @@ Example output is in `examples/`. Each plan takes up to about 10 s to solve.
 
 The regex parser defines the `PlanSpec` contract. An LLM parser can replace it
 later, as long as it produces the same `PlanSpec` fields.
+
+## How duplexes are laid out
+
+| | Ground floor | First floor |
+|---|---|---|
+| Always | living, kitchen, common bath, stair, pooja room (if requested) | landing lobby, master bedroom (`bed1`) with attached bath |
+| 2BHK | — | `bed2`, plus a common bath off the lobby |
+| 3BHK | `bed3` (guest or elders' room) | `bed2`, plus a common bath off the lobby |
+| 4BHK | `bed4` | `bed2`, `bed3`, plus a common bath off the lobby |
+
+**The stair** is a single rectangle that sits in the same position on both
+floors. On the ground floor it opens off the living room; upstairs it opens
+onto the lobby. Its size comes from the stair rules:
+
+- 3.0 m from one floor to the next, with steps at most 0.19 m high, gives 16 steps, split into two flights of 8.
+- A dog-legged stair runs those two flights side by side. Each flight is 0.9 m wide and has 7 steps 0.25 m deep, with a 0.9 m landing between them.
+- So the stair needs at least **1.8 × 2.65 m**.
+- Vastu, when on, keeps the stair out of the north-east.
+
+**The FSI limit is checked before solving.** With only basic FSI, a suburban
+plot often can't take two full floors. For example, 40×60 ft on a 15 m road
+needs FSI 1.01 against an allowed 1.0. The tool refuses these with that
+explanation. Allowing more needs premium FSI and TDR, which aren't modelled yet.
+
+**The validator also checks:**
+- overlaps on each floor separately
+- the stair's width and length
+- that the stair is in the same position on every floor
+- the FSI floor count
+- that every required pair of rooms shares a wall of at least 0.9 m for a door
 
 ## How Vastu is applied
 
@@ -73,8 +104,9 @@ later, as long as it produces the same `PlanSpec` fields.
 ## Known gaps, in order of value
 
 1. Verify the DCPR 2034 numbers. Then add premium FSI and TDR, which depend on road width (Table 12 of the regulations).
-2. Add staircases and multi-floor (duplex) plans. The FSI floor count is calculated but not yet laid out.
+2. Upper floors smaller than the ground floor, plus balconies and terraces. Today both floors fill the same footprint, which is why FSI often rules out a duplex.
 3. Doors and windows are drawn only as shared walls of at least 0.9 m. Window placement for the ventilation ratio isn't modelled yet.
-4. Corridors and dining rooms. Today every bedroom opens off the living room.
-5. DXF export via ezdxf, so plans open in CAD software.
-6. LLM prompt parser, behind the same `PlanSpec` contract.
+4. Corridors and dining rooms. Today every room opens off the living room or the lobby.
+5. Other stair types (straight, L-shaped) and stair-specific Vastu rules.
+6. DXF export via ezdxf, so plans open in CAD software.
+7. LLM prompt parser, behind the same `PlanSpec` contract.

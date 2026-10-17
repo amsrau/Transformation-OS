@@ -1,18 +1,21 @@
 """Constraint-based layout generator (OR-Tools CP-SAT).
 
 Rooms are axis-aligned rectangles on a 10 cm grid inside the buildable envelope.
+A duplex stacks two floors on the same envelope; the stair is one rectangle that
+occupies the same position on both floors.
 Local frame: x runs along the road frontage, y runs from the front setback line
 (y = 0, road side) to the rear. Hard constraints come from the city rule file;
 Vastu is a soft preference (or a hard quadrant constraint when `strict`).
 """
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import asdict, dataclass
 
 from ortools.sat.python import cp_model
 
-from .rules import Envelope
+from .rules import Envelope, room_standard
 from .spec import PlanSpec
 
 GRID_M = 0.1
@@ -30,6 +33,7 @@ class RoomReq:
     front: bool = False             # must touch the front (entrance) edge
     vastu: str | None = None        # preferred zone, e.g. "SE"
     vastu_avoid: str | None = None  # zone to keep away from
+    floors: tuple[int, ...] = (0,)  # 0 = ground; the stair lists every floor it serves
 
 
 @dataclass
@@ -40,6 +44,7 @@ class Room:
     y: float
     w: float
     h: float
+    floor: int = 0
 
     @property
     def area(self) -> float:
@@ -47,6 +52,8 @@ class Room:
 
 
 def program(spec: PlanSpec) -> list[RoomReq]:
+    if spec.floors == 2:
+        return _duplex_program(spec)
     rooms = [
         RoomReq("living", "habitable", front=True),
         RoomReq("kitchen", "kitchen", ("living",), vastu="SE"),
@@ -64,6 +71,32 @@ def program(spec: PlanSpec) -> list[RoomReq]:
     return rooms
 
 
+def _duplex_program(spec: PlanSpec) -> list[RoomReq]:
+    """Ground: living, kitchen, common bath, stair (+ a guest/elders' bedroom from 3BHK).
+    First: landing lobby with the master suite and remaining bedrooms."""
+    up_beds = 2 if spec.bhk <= 3 else 3
+    rooms = [
+        RoomReq("living", "habitable", front=True),
+        RoomReq("kitchen", "kitchen", ("living",), vastu="SE"),
+        RoomReq("stair", "stair", ("living",), vastu_avoid="NE", floors=(0, 1)),
+        RoomReq("bath2", "bath", ("living",), vastu_avoid="NE"),
+    ]
+    for i in range(up_beds + 1, spec.bhk + 1):
+        rooms.append(RoomReq(f"bed{i}", "habitable_secondary", ("living",)))
+    if spec.pooja:
+        rooms.append(RoomReq("pooja", "pooja", ("living",), vastu="NE"))
+    rooms += [
+        RoomReq("lobby", "lobby", ("stair",), floors=(1,)),
+        RoomReq("bed1", "habitable", ("lobby",), vastu="SW", floors=(1,)),
+        RoomReq("bath1", "bath", ("bed1",), vastu_avoid="NE", floors=(1,)),
+    ]
+    for i in range(2, up_beds + 1):
+        rooms.append(RoomReq(f"bed{i}", "habitable_secondary", ("lobby",), floors=(1,)))
+    if up_beds >= 2:
+        rooms.append(RoomReq("bath3", "bath", ("lobby",), vastu_avoid="NE", floors=(1,)))
+    return rooms
+
+
 def local_axes(facing: str) -> tuple[tuple[int, int], tuple[int, int]]:
     """Compass vectors of local +x and local +y, with the road at the bottom of the drawing."""
     fx, fy = COMPASS[facing]
@@ -76,6 +109,11 @@ def _dm(m: float) -> int:
     return int(round(m / GRID_M))
 
 
+def _dm_min(m: float) -> int:
+    """Grid cells for a minimum: round up so the rule still holds after snapping."""
+    return math.ceil(m / GRID_M - 1e-9)
+
+
 def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int = 0,
              time_limit_s: float = 10.0, min_difference_m: float = 2.0) -> list[list[Room]]:
     """Return up to `n` distinct layouts. Each later layout differs from every earlier one
@@ -85,7 +123,7 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
     W, D = int(env.w_m / GRID_M), int(env.d_m / GRID_M)
     right, rear = local_axes(spec.facing)
     exterior_kinds = set(rules["ventilation"]["exterior_wall_required"])
-    door = _dm(rules["design"]["min_door_width_m"])
+    door = _dm_min(rules["design"]["min_door_width_m"])
     max_aspect = rules["design"]["max_aspect_ratio"]
     vastu_w = {"off": 0, "light": 4, "strict": 4}[spec.vastu]
 
@@ -94,16 +132,20 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
         m = cp_model.CpModel()
         v: dict[str, dict] = {}
         for r in reqs:
-            std = rules["rooms"][r.kind]
-            mw = _dm(std["min_width_m"])
+            std = room_standard(rules, r.kind)
+            mw = _dm_min(std["min_width_m"])
             x, y = m.new_int_var(0, W, f"{r.name}_x"), m.new_int_var(0, D, f"{r.name}_y")
             w, h = m.new_int_var(mw, W, f"{r.name}_w"), m.new_int_var(mw, D, f"{r.name}_h")
             x2, y2 = m.new_int_var(0, W, f"{r.name}_x2"), m.new_int_var(0, D, f"{r.name}_y2")
             area = m.new_int_var(0, W * D, f"{r.name}_a")
             m.add_multiplication_equality(area, [w, h])
-            m.add(area >= int(std["min_area_sqm"] * 100))
+            m.add(area >= math.ceil(std["min_area_sqm"] * 100 - 1e-9))
             if cap := rules["design"]["max_area_factor"].get(r.kind):
                 m.add(area <= int(cap * std["min_area_sqm"] * 100))
+            if r.kind == "stair":
+                along_x = m.new_bool_var(f"{r.name}_along_x")
+                m.add(w >= _dm_min(std["min_length_m"])).only_enforce_if(along_x)
+                m.add(h >= _dm_min(std["min_length_m"])).only_enforce_if(~along_x)
             if r.kind.startswith("habitable"):
                 m.add(2 * w <= int(2 * max_aspect) * h)
                 m.add(2 * h <= int(2 * max_aspect) * w)
@@ -120,7 +162,9 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
                 m.add(y + h == D).only_enforce_if(sides[3])
                 m.add_bool_or(sides)
 
-        m.add_no_overlap_2d([v[r.name]["xi"] for r in reqs], [v[r.name]["yi"] for r in reqs])
+        for f in range(spec.floors):
+            on_floor = [r.name for r in reqs if f in r.floors]
+            m.add_no_overlap_2d([v[k]["xi"] for k in on_floor], [v[k]["yi"] for k in on_floor])
 
         for r in reqs:
             for other in r.adjacent_to:
@@ -147,7 +191,7 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
 
         for prev in found:
             diffs = []
-            for room in prev:
+            for room in {r.name: r for r in prev}.values():
                 for key, val in (("x", room.x), ("y", room.y)):
                     d = m.new_int_var(0, max(W, D), f"d_{room.name}_{key}_{len(diffs)}")
                     m.add_abs_equality(d, v[room.name][key] - _dm(val))
@@ -162,8 +206,8 @@ def generate(spec: PlanSpec, env: Envelope, rules: dict, n: int = 3, seed: int =
         if solver.solve(m) not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             break
         found.append([
-            Room(r.name, r.kind, *(solver.value(v[r.name][k]) * GRID_M for k in ("x", "y", "w", "h")))
-            for r in reqs
+            Room(r.name, r.kind, *(solver.value(v[r.name][k]) * GRID_M for k in ("x", "y", "w", "h")), floor=f)
+            for r in reqs for f in r.floors
         ])
     return found
 

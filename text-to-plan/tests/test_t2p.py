@@ -1,7 +1,7 @@
 import pytest
 
 from t2p.generator import Room, generate, local_axes, program
-from t2p.rules import envelope, load_rules
+from t2p.rules import envelope, load_rules, stair_size
 from t2p.spec import parse
 from t2p.validate import validate
 
@@ -53,7 +53,8 @@ def test_generated_plan_is_valid():
     env = envelope(RULES, spec.plot_w_ft, spec.plot_d_ft, spec.zone, spec.road_width_m)
     plans = generate(spec, env, RULES, n=1, time_limit_s=3)
     assert plans
-    assert validate(plans[0], env, RULES) == []
+    adjacency = [(r.name, o) for r in program(spec) for o in r.adjacent_to]
+    assert validate(plans[0], env, RULES, adjacency) == []
     assert {r.name for r in plans[0]} == {r.name for r in program(spec)}
 
 
@@ -66,3 +67,58 @@ def test_validator_catches_breaches():
     assert "overlaps" in errors
     assert "bed1: 6.00 sqm" in errors
     assert "outside buildable envelope" in errors
+
+
+# --- duplex / stair ---------------------------------------------------------
+
+def test_parse_duplex():
+    for prompt in ("3BHK duplex", "2bhk G+1 house", "two-storey 3bhk", "2 floor 2bhk"):
+        assert parse(prompt).floors == 2, prompt
+    assert parse("3BHK house").floors == 1
+
+
+def test_duplex_needs_two_bedrooms():
+    with pytest.raises(ValueError):
+        parse("1BHK duplex")
+
+
+def test_stair_size_dog_leg():
+    # 3.0 m floor-to-floor at 0.19 m risers → 16 risers, 8 per flight, 7 treads of 0.25 m + 0.9 m landing.
+    assert stair_size(RULES) == pytest.approx((1.8, 2.65))
+
+
+def test_duplex_program_splits_floors():
+    reqs = {r.name: r for r in program(parse("3bhk duplex"))}
+    assert reqs["stair"].floors == (0, 1)
+    assert reqs["bed1"].floors == (1,) and reqs["bed3"].floors == (0,)
+
+
+def test_generated_duplex_is_valid():
+    spec = parse("30x40 east facing 3BHK duplex, vastu")
+    env = envelope(RULES, spec.plot_w_ft, spec.plot_d_ft, spec.zone, spec.road_width_m)
+    plans = generate(spec, env, RULES, n=1, time_limit_s=5)
+    assert plans
+    adjacency = [(r.name, o) for r in program(spec) for o in r.adjacent_to]
+    assert validate(plans[0], env, RULES, adjacency) == []
+    stairs = [r for r in plans[0] if r.kind == "stair"]
+    assert [s.floor for s in stairs] == [0, 1]
+    assert (stairs[0].x, stairs[0].y, stairs[0].w, stairs[0].h) == (stairs[1].x, stairs[1].y, stairs[1].w, stairs[1].h)
+
+
+def test_validator_catches_duplex_breaches():
+    env = envelope(RULES, 30, 40, "suburbs", 9.0)
+    rooms = [Room("stair", "stair", 0, 0, 1.8, 2.7, floor=0),
+             Room("stair", "stair", 1.0, 0, 1.8, 2.7, floor=1),          # moved upstairs
+             Room("living", "habitable", 1.8, 0, 3.0, 4.0, floor=0),
+             Room("bed1", "habitable", 0, 4.0, 3.0, 3.5, floor=1)]
+    errors = "\n".join(validate(rooms, env, RULES, [("living", "stair"), ("bed1", "living")]))
+    assert "stair is not in the same position" in errors
+    assert "bed1 and living do not share" in errors          # different floors
+    assert "living overlaps" not in errors                   # same footprint, different floors is fine
+
+
+def test_validator_rejects_floors_beyond_fsi():
+    env = envelope(RULES, 30, 40, "suburbs", 9.0)
+    low_fsi = type(env)(**{**env.__dict__, "fsi": 0.5})
+    rooms = [Room("living", "habitable", 0, 0, 3.0, 4.0, floor=0), Room("bed1", "habitable", 0, 0, 3.0, 4.0, floor=1)]
+    assert any("exceed" in e for e in validate(rooms, low_fsi, RULES))

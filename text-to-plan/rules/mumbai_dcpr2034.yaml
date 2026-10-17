@@ -60,7 +60,19 @@ rooms:
   bath:                 { min_area_sqm: 1.8, min_width_m: 1.2 }   # combined bath + WC
   wc:                   { min_area_sqm: 1.1, min_width_m: 1.0 }
   pooja:                { min_area_sqm: 1.2, min_width_m: 1.0 }   # not regulated; design minimum
+  lobby:                { min_area_sqm: 2.5, min_width_m: 1.2 }   # upper-floor landing / family area; design minimum
   source: DCPR 2034 Reg. 37 (to verify); interim NBC 2016 Part 3 / MBBL
+  verified: false
+
+# Internal staircase of a single dwelling (duplex). Modelled as a dog-legged stair:
+# two flights side by side plus a mid landing as deep as the flight is wide.
+stairs:
+  type: dog_leg
+  min_flight_width_m: 0.9
+  max_riser_m: 0.19
+  min_tread_m: 0.25
+  floor_to_floor_m: 3.0
+  source: DCPR 2034 Reg. 37 / NBC 2016 Part 4 (to verify)
   verified: false
 
 ventilation:
@@ -75,4 +87,4 @@ design:
   min_door_width_m: 0.9         # minimum shared-wall length for a door between rooms
   max_aspect_ratio: 2.0         # habitable rooms only
   # Service rooms are capped so spare area goes to living and bedrooms.
-  max_area_factor: { kitchen: 2.0, bath: 2.0, wc: 2.0, pooja: 2.5 }
+  max_area_factor: { kitchen: 2.0, bath: 2.0, wc: 2.0, pooja: 2.5, lobby: 2.5, stair: 1.3 }

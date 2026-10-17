@@ -1,6 +1,7 @@
 """Load a city's rule file and derive the buildable envelope for a plot."""
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -64,3 +65,20 @@ def envelope(rules: dict, plot_w_ft: float, plot_d_ft: float, zone: str, road_wi
     if env.w_m <= 0 or env.d_m <= 0:
         raise ValueError("setbacks leave no buildable area on this plot")
     return env
+
+
+def stair_size(rules: dict) -> tuple[float, float]:
+    """(short side, long side) in metres of a dog-legged stair for one storey."""
+    st = rules["stairs"]
+    risers = math.ceil(st["floor_to_floor_m"] / st["max_riser_m"] - 1e-9)
+    treads_per_flight = math.ceil(risers / 2) - 1
+    width = st["min_flight_width_m"]
+    return 2 * width, treads_per_flight * st["min_tread_m"] + width
+
+
+def room_standard(rules: dict, kind: str) -> dict:
+    """Minimum area / width for a room kind; the stair's are derived from the stair rules."""
+    if kind == "stair":
+        short, long = stair_size(rules)
+        return {"min_area_sqm": round(short * long, 2), "min_width_m": short, "min_length_m": long}
+    return rules["rooms"][kind]
